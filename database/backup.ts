@@ -18,10 +18,7 @@ export function dumpAll(): Promise<BackupData> {
   });
 }
 
-/**
- * Replaces all data in a single transaction. If any statement fails the transaction is
- * rolled back and the existing data is left exactly as it was.
- */
+/** Replaces all data in one transaction. A failure rolls the transaction back. */
 export function replaceAll(data: BackupData): Promise<void> {
   return withDb('Failed to restore data', async (db) => {
     await db.withTransactionAsync(async () => {
@@ -57,3 +54,4 @@ export function replaceAll(data: BackupData): Promise<void> {
       }
     });
   });
+}
