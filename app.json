@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "IG Account Processor",
+    "slug": "ig-account-processor",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "igprocessor",
+    "userInterfaceStyle": "automatic",
+    "android": {
+      "package": "com.igprocessor.app",
+      "permissions": [],
+      "intentFilters": []
+    },
+    "plugins": ["expo-router", "expo-sqlite"]
+  }
+}
