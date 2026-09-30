@@ -12,7 +12,7 @@ export const IGNORED_IG_PATH_SEGMENTS = [
 export const USERNAME_MAX_LENGTH = 30;
 export const USERNAME_REGEX = /^[a-z0-9._]{1,30}$/;
 
-export const SUPPORTED_IMPORT_EXTENSIONS = ['.xlsx', '.xls', '.csv', '.txt'];
+export const SUPPORTED_IMPORT_EXTENSIONS = ['.xlsx', '.xls', '.csv', '.txt', '.json'];
 
 export const STORAGE_KEYS = {
   SETTINGS: 'app_settings',
