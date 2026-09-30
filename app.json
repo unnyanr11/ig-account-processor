@@ -11,6 +11,6 @@
       "permissions": [],
       "intentFilters": []
     },
-    "plugins": ["expo-router", "expo-sqlite"]
+    "plugins": ["expo-router"]
   }
 }
