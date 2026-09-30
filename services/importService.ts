@@ -18,13 +18,19 @@ export type ImportAnalysis = {
   invalid: number;
 };
 
+// Backward-compatible summary type used by the existing ImportPreview component.
+export type ImportSummary = {
+  names: string[];
+  total: number;
+};
+
 const text = (value: unknown): string => typeof value === 'string' ? value.trim() : '';
 const first = (row: ParsedRow, keys: string[]): string => { for (const key of keys) { const value = text(row[key]); if (value) return value; } return ''; };
 
 function usernameFromRow(row: ParsedRow): string {
   const value = first(row, ['username', 'userName', 'user_name', 'handle', 'screen_name', 'instagram', 'profile', 'url', 'link']);
-  const match = value.match(/instagram\.com\/([A-Za-z0-9._]+)/i);
-  return (match ? match[1] : value).replace(/^@/, '').replace(/\/$/, '').trim().toLowerCase();
+  const match = value.match(/instagram\\.com\\/([A-Za-z0-9._]+)/i);
+  return (match ? match[1] : value).replace(/^@/, '').replace(/\\/$/, '').trim().toLowerCase();
 }
 
 export function parseImportFile(content: string, fileName: string): ParsedRow[] { return parseFile(content, fileName); }
