@@ -1,160 +1,17 @@
 import * as XLSX from 'xlsx';
-
-export type ParsedRow = Record<string, unknown>;
-
-const SUPPORTED_EXTENSIONS = ['xlsx', 'xls', 'csv', 'json', 'txt'] as const;
-
-function normalizeText(content: string): string {
-  return content.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-}
-
-function normalizeJsonRows(value: unknown): ParsedRow[] {
-  if (Array.isArray(value)) {
-    const rows: ParsedRow[] = [];
-    for (const item of value) {
-      if (item && typeof item === 'object' && !Array.isArray(item)) rows.push(item as ParsedRow);
-      else if (typeof item === 'string' || typeof item === 'number') rows.push({ username: String(item) });
-    }
-    return rows;
-  }
-
-  if (value && typeof value === 'object') {
-    const record = value as Record<string, unknown>;
-    for (const key of ['accounts', 'users', 'profiles', 'data', 'items', 'results']) {
-      if (key in record) {
-        const rows = normalizeJsonRows(record[key]);
-        if (rows.length) return rows;
-      }
-    }
-    for (const nested of Object.values(record)) {
-      const rows = normalizeJsonRows(nested);
-      if (rows.length) return rows;
-    }
-    return [record];
-  }
-
-  return [];
-}
-
-function parseCsvRows(content: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let value = '';
-  let quoted = false;
-
-  const pushValue = () => {
-    row.push(value);
-    value = '';
-  };
-
-  const pushRow = () => {
-    pushValue();
-    const trimmed = row.map((cell) => cell.trim());
-    if (trimmed.some((cell) => cell.length > 0)) rows.push(trimmed);
-    row = [];
-  };
-
-  for (let index = 0; index < content.length; index += 1) {
-    const character = content[index];
-    const next = content[index + 1];
-
-    if (quoted) {
-      if (character === '"' && next === '"') {
-        value += '"';
-        index += 1;
-      } else if (character === '"') {
-        quoted = false;
-      } else {
-        value += character;
-      }
-      continue;
-    }
-
-    if (character === '"') {
-      if (value.trim().length > 0) throw new Error('Malformed CSV: unexpected quote in unquoted field.');
-      quoted = true;
-      value = '';
-      continue;
-    }
-
-    if (character === ',') {
-      pushValue();
-      continue;
-    }
-
-    if (character === '\n') {
-      pushRow();
-      continue;
-    }
-
-    value += character;
-  }
-
-  if (quoted) throw new Error('Malformed CSV: missing closing quote.');
-  if (value.length > 0 || row.length > 0) pushRow();
-  return rows;
-}
-
-function normalizeHeader(value: string): string {
-  return value.trim().toLowerCase().replace(/[\s_-]+/g, '');
-}
-
-function hasHeaderRow(firstRow: string[]): boolean {
-  const headerKeys = new Set(['username', 'usernames', 'user', 'handle', 'url', 'link', 'profileurl', 'profile', 'name', 'fullname', 'displayname']);
-  return firstRow.some((cell) => headerKeys.has(normalizeHeader(cell)));
-}
-
-export function parseCsv(content: string): ParsedRow[] {
-  const rows = parseCsvRows(normalizeText(content));
-  if (!rows.length) return [];
-
-  const headerMode = hasHeaderRow(rows[0]);
-  const headers = headerMode
-    ? rows[0].map((header, index) => header || `column_${index + 1}`)
-    : Array.from({ length: Math.max(...rows.map((row) => row.length)) }, (_, index) => `column_${index + 1}`);
-  const dataRows = headerMode ? rows.slice(1) : rows;
-
-  return dataRows.map((values) => {
-    return values.reduce<ParsedRow>((row, value, index) => {
-      const header = headers[index] || `column_${index + 1}`;
-      row[header] = value ?? '';
-      return row;
-    }, {});
-  });
-}
-
-function parseText(content: string): ParsedRow[] {
-  return normalizeText(content)
-    .split('\n')
-    .flatMap((line) => line.split(/[,\s]+/))
-    .map((value) => value.trim())
-    .filter(Boolean)
-    .map((username) => ({ username }));
-}
-
-export function parseJson(content: string): ParsedRow[] {
-  try {
-    return normalizeJsonRows(JSON.parse(normalizeText(content)));
-  } catch {
-    throw new Error('Malformed JSON file. Please check the file format and try again.');
-  }
-}
-
-export function parseFile(content: string, fileName: string): ParsedRow[] {
-  const extension = fileName.toLowerCase().split('.').pop() || '';
-
-  if (extension === 'json') return parseJson(content);
-  if (extension === 'csv') return parseCsv(content);
-  if (extension === 'txt' || !extension) return parseText(content);
-  if (extension !== 'xlsx' && extension !== 'xls') {
-    throw new Error(`Unsupported file type "${extension ? `.${extension}` : fileName}". Supported types: ${SUPPORTED_EXTENSIONS.map((item) => `.${item}`).join(', ')}.`);
-  }
-
-  try {
-    const workbook = XLSX.read(content, { type: 'string' });
-    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-    return XLSX.utils.sheet_to_json<ParsedRow>(firstSheet, { defval: '' });
-  } catch {
-    throw new Error('Unable to parse spreadsheet file. Please verify the file is a valid Excel document.');
-  }
-}
+export type ParsedRow=Record<string,unknown>;
+export type DetectedFormat='JSON'|'CSV'|'XLSX'|'XLS'|'TSV'|'TXT'|'JSONL'|'NDJSON'|'XML'|'HTML';
+export interface ParsedFile{format:DetectedFormat;rows:ParsedRow[];warnings:string[];}
+const clean=(s:string)=>s.replace(/^\uFEFF/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+const extension=(n:string)=>n.toLowerCase().split('.').pop()||'';
+const key=(s:string)=>s.trim().toLowerCase().replace(/[^a-z0-9]/g,'');
+function matrix(content:string,delimiter=','){const rows:string[][]=[];let row:string[]=[],v='',q=false;for(let i=0;i<content.length;i++){const c=content[i],n=content[i+1];if(q){if(c==='"'&&n==='"'){v+='"';i++;}else if(c==='"')q=false;else v+=c;continue;}if(c==='"'){if(v.trim())throw new Error('Malformed delimited file: unexpected quote.');q=true;}else if(c===delimiter){row.push(v.trim());v='';}else if(c==='\n'){row.push(v.trim());v='';if(row.some(Boolean))rows.push(row);row=[];}else v+=c;}if(q)throw new Error('Malformed delimited file: missing closing quote.');if(v.length||row.length){row.push(v.trim());if(row.some(Boolean))rows.push(row);}return rows;}
+function fromMatrix(rows:string[][]){if(!rows.length)return[];const header=rows[0].some(c=>['username','usernames','handle','modelname','fullname','displayname','instagramusername','instagramlink','profilepicurl','babepediasource','source','letter','alphabet'].includes(key(c)));const heads=(header?rows[0]:Array.from({length:Math.max(...rows.map(r=>r.length))},(_,i)=>`column_${i+1}`)).map((h,i)=>h||`column_${i+1}`);return (header?rows.slice(1):rows).map(r=>Object.fromEntries(heads.map((h,i)=>[h,r[i]??''])));}
+function jsonRows(v:unknown):ParsedRow[]{if(Array.isArray(v))return v.flatMap(x=>x&&typeof x==='object'&&!Array.isArray(x)?[x as ParsedRow]:typeof x==='string'||typeof x==='number'?[{username:String(x)}]:[]);if(v&&typeof v==='object'){const r=v as Record<string,unknown>;for(const k of Object.keys(r)){if(['models','accounts','users','profiles','data','items','results','records','rows'].includes(k.toLowerCase())){const a=jsonRows(r[k]);if(a.length)return a;}}return[r];}return[];}
+export function parseJson(c:string){try{return jsonRows(JSON.parse(clean(c)));}catch{throw new Error('Malformed JSON file. Please check the file format and try again.');}}
+export function parseCsv(c:string){return fromMatrix(matrix(clean(c)));} export function parseTsv(c:string){return fromMatrix(matrix(clean(c),'\t'));}
+export function parseJsonLines(c:string){const out:ParsedRow[]=[];for(const [i,line] of clean(c).split('\n').entries()){if(!line.trim())continue;try{out.push(...jsonRows(JSON.parse(line)));}catch{throw new Error(`Malformed JSONL/NDJSON at line ${i+1}.`);}}return out;}
+export function detectFormat(content:string,fileName:string,mime?:string):DetectedFormat{const e=extension(fileName),t=clean(content).trimStart();if(/^\s*[\[{]/.test(t)){try{JSON.parse(clean(content));return'JSON';}catch{}}if(/^<(!doctype\s+html|html\b)/i.test(t)||/<html[\s>]/i.test(t))return'HTML';if(/^<[^>]+>/.test(t))return'XML';if(e==='jsonl')return'JSONL';if(e==='ndjson')return'NDJSON';if(e==='tsv')return'TSV';if(e==='csv')return'CSV';if(e==='xlsx')return'XLSX';if(e==='xls')return'XLS';if(e==='xml')return'XML';if(e==='html'||e==='htm')return'HTML';if(e==='json')return'JSON';if(e==='txt')return'TXT';if(mime?.includes('json'))return'JSON';if(mime?.includes('csv'))return'CSV';if(mime?.includes('spreadsheet'))return'XLSX';if(t.includes(',')||t.includes('\n'))return'CSV';return'TXT';}
+function xmlRows(c:string){const out:ParsedRow[]=[];const re=/<(record|item|person|model|account)\b[^>]*>([\s\S]*?)<\/\1>/gi;let m:RegExpExecArray|null;while(m=re.exec(c)){const r:ParsedRow={};const f=/<([A-Za-z_][\w:-]*)\b[^>]*>([\s\S]*?)<\/\1>/g;let x:RegExpExecArray|null;while(x=f.exec(m[2]))r[x[1]]=x[2].replace(/<[^>]+>/g,'').trim();out.push(r);}return out.length?out:[{rawXml:clean(c)}];}
+function htmlRows(c:string){const text=clean(c).replace(/<script[\s\S]*?<\/script>/gi,' ').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<[^>]+>/g,'\n');return text.split('\n').map(s=>s.trim()).filter(Boolean).map(rawText=>({rawText}));}
+export function parseFile(content:string,fileName:string,mime?:string):ParsedFile{const format=detectFormat(content,fileName,mime);if(!content.trim())return{format,rows:[],warnings:['The selected file is empty.']};switch(format){case'JSON':return{format,rows:parseJson(content),warnings:[]};case'CSV':return{format,rows:parseCsv(content),warnings:[]};case'TSV':return{format,rows:parseTsv(content),warnings:[]};case'JSONL':case'NDJSON':return{format,rows:parseJsonLines(content),warnings:[]};case'XML':return{format,rows:xmlRows(content),warnings:[]};case'HTML':return{format,rows:htmlRows(content),warnings:['HTML imports preserve extracted text and may require manual mapping.']};case'XLSX':case'XLS':{try{const wb=XLSX.read(content,{type:'base64'});const s=wb.Sheets[wb.SheetNames[0]];return{format,rows:s?XLSX.utils.sheet_to_json<ParsedRow>(s,{defval:''}):[],warnings:[]};}catch{throw new Error(`Unable to parse ${format} spreadsheet. Verify the file is valid.`);}}default:return{format:'TXT',rows:clean(content).split(/\n+/).flatMap(l=>l.split(/[,;\t ]+/)).filter(Boolean).map(username=>({username})),warnings:[]};}}

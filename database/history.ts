@@ -1,55 +1,7 @@
-import { ImportBatch, StatusHistoryEntry } from '../types/history';
-import { nowIso } from '../utils/normalization';
-import { withDb } from './database';
-import type { HistoryRepository } from './interfaces';
-
-const CHUNK = 500;
-
-export function getForAccount(accountId: number): Promise<StatusHistoryEntry[]> {
-  return withDb('Failed to load history', (db) =>
-    db.getAllAsync<StatusHistoryEntry>('SELECT * FROM status_history WHERE account_id = ? ORDER BY id DESC', [accountId])
-  );
-}
-
-export function createImportBatch(
-  fileName: string,
-  totals: { total: number; newRecords: number; duplicates: number; invalid: number }
-): Promise<number> {
-  return withDb('Failed to record import', async (db) => {
-    const result = await db.runAsync(
-      `INSERT INTO import_batches (file_name, total_records, new_records, duplicate_records, invalid_records, created_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [fileName, totals.total, totals.newRecords, totals.duplicates, totals.invalid, nowIso()]
-    );
-    return result.lastInsertRowId;
-  });
-}
-
-/** Links accounts (new and already-existing) to the file they appeared in. */
-export function linkAccountsToBatch(batchId: number, accountIds: number[]): Promise<void> {
-  return withDb('Failed to record import', async (db) => {
-    for (let i = 0; i < accountIds.length; i += CHUNK) {
-      const chunk = accountIds.slice(i, i + CHUNK);
-      await db.withTransactionAsync(async () => {
-        for (const accountId of chunk) {
-          await db.runAsync('INSERT OR IGNORE INTO import_batch_accounts (import_batch_id, account_id) VALUES (?, ?)', [batchId, accountId]);
-        }
-      });
-    }
-  });
-}
-
-export function getImportBatches(): Promise<ImportBatch[]> {
-  return withDb('Failed to load import history', (db) =>
-    db.getAllAsync<ImportBatch>('SELECT * FROM import_batches ORDER BY id DESC')
-  );
-}
-
-export function getImportBatch(id: number): Promise<ImportBatch | null> {
-  return withDb('Failed to load import', async (db) =>
-    (await db.getFirstAsync<ImportBatch>('SELECT * FROM import_batches WHERE id = ?', [id])) ?? null
-  );
-}
-
-const _contract: HistoryRepository = { getForAccount, createImportBatch, linkAccountsToBatch, getImportBatches, getImportBatch };
-void _contract;
+import type{ImportBatch,StatusHistoryEntry}from'../types/history';import{nowIso}from'../utils/normalization';import{withDb}from'./database';import type{HistoryRepository}from'./interfaces';
+export function getForAccount(id:number){return withDb('Failed to load history',db=>db.getAllAsync<StatusHistoryEntry>('SELECT * FROM status_history WHERE account_id=? ORDER BY id DESC',[id]));}
+export function createImportBatch(fileName:string,totals:any){return withDb('Failed to record import',async db=>{const r=await db.runAsync('INSERT INTO app_imports(source_file_name,source_file_type,source_mime_type,source_size,imported_at,total_records,new_records,updated_records,duplicates,records_without_instagram,records_with_instagram,records_with_images,records_without_images,placeholder_images,warning_count,error_count) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[fileName,totals.fileType||'UNKNOWN',totals.mimeType||null,totals.fileSize||null,nowIso(),totals.total,totals.newRecords,totals.updatedRecords||0,totals.duplicates??totals.duplicatesInFile??0,totals.withoutInstagram||0,totals.withInstagram||0,totals.withImages||0,totals.withoutImages||0,totals.placeholderImages||0,totals.warningCount||0,totals.errorCount||totals.invalid||0]);return r.lastInsertRowId;});}
+export function linkAccountsToBatch(importId:number,ids:number[]){return withDb('Failed to record import',async db=>{for(const id of ids)await db.runAsync('INSERT OR IGNORE INTO app_import_accounts(import_id,account_id,source_row) VALUES(?,?,NULL)',[importId,id]);});}
+export function getImportBatches(){return withDb('Failed to load import history',db=>db.getAllAsync<ImportBatch>('SELECT id,source_file_name file_name,source_file_type file_type,source_mime_type mime_type,source_size file_size,total_records,new_records,updated_records,duplicates duplicate_records,records_without_instagram,records_with_instagram,records_with_images,records_without_images,placeholder_images,warning_count,error_count,imported_at created_at FROM app_imports ORDER BY id DESC'));}
+export function getImportBatch(id:number){return withDb('Failed to load import',async db=>(await db.getFirstAsync<ImportBatch>('SELECT id,source_file_name file_name,source_file_type file_type,source_mime_type mime_type,source_size file_size,total_records,new_records,updated_records,duplicates duplicate_records,records_without_instagram,records_with_instagram,records_with_images,records_without_images,placeholder_images,warning_count,error_count,imported_at created_at FROM app_imports WHERE id=?',[id]))??null);}
+const _contract:HistoryRepository={getForAccount,createImportBatch,linkAccountsToBatch,getImportBatches,getImportBatch};void _contract;

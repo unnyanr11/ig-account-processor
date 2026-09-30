@@ -27,12 +27,12 @@ function AccountCard({ account, colors, onPress }: Props) {
           <Image source={{ uri: account.profile_image_uri || account.image_url || undefined }} style={styles.avatar} />
         ) : (
           <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
-            <Text style={[styles.avatarPlaceholderText, { color: colors.textMuted }]}>{(account.username[0] || '?').toUpperCase()}</Text>
+            <Text style={[styles.avatarPlaceholderText, { color: colors.textMuted }]}>{(account.username?.[0] || account.model_name?.[0] || '?').toUpperCase()}</Text>
           </View>
         )}
         <View style={styles.identity}>
           <Text style={[styles.displayName, { color: colors.text }]} numberOfLines={1}>{account.display_name || account.full_name || 'Instagram account'}</Text>
-          <Text style={[styles.username, { color: colors.textSecondary }]} numberOfLines={1}>@{account.username}</Text>
+          <Text style={[styles.username, { color: colors.textSecondary }]} numberOfLines={1}>{account.username ? `@${account.username}` : 'Instagram unavailable'}</Text>
         </View>
         <View style={[styles.badge, { borderColor: color }]}>
           <Text style={[styles.badgeText, { color }]}>{STATUS_SYMBOLS[account.status]} {label}</Text>
