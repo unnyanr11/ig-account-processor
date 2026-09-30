@@ -10,7 +10,6 @@ import { ThemeColors } from '../utils/theme';
 import { useTheme } from '../utils/useTheme';
 
 const FORMATS: { key: ExportFormat; label: string }[] = [
-  { key: 'json', label: 'JSON' },
   { key: 'csv', label: 'CSV' },
   { key: 'txt', label: 'TXT' },
   { key: 'xlsx', label: 'XLSX' },

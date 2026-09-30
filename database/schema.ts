@@ -1,24 +1,24 @@
-/** Forward-compatible local-first SQLite schema. Legacy tables are preserved; v2+ adds the richer model/import/image architecture. */
-export const MIGRATIONS:string[][]=[[
-`CREATE TABLE IF NOT EXISTS lists (id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
-`CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY AUTOINCREMENT,username TEXT UNIQUE,instagram_url TEXT,display_name TEXT,image_url TEXT,status TEXT NOT NULL DEFAULT 'NEW',list_id INTEGER,source TEXT,notes TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,FOREIGN KEY(list_id) REFERENCES lists(id) ON DELETE SET NULL)`,
-`CREATE TABLE IF NOT EXISTS status_history (id INTEGER PRIMARY KEY AUTOINCREMENT,account_id INTEGER NOT NULL,old_status TEXT,new_status TEXT NOT NULL,created_at TEXT NOT NULL,FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE)`,
-`CREATE TABLE IF NOT EXISTS import_batches (id INTEGER PRIMARY KEY AUTOINCREMENT,file_name TEXT NOT NULL,total_records INTEGER NOT NULL DEFAULT 0,new_records INTEGER NOT NULL DEFAULT 0,duplicate_records INTEGER NOT NULL DEFAULT 0,invalid_records INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)`,
-`CREATE TABLE IF NOT EXISTS import_batch_accounts (import_batch_id INTEGER NOT NULL,account_id INTEGER NOT NULL,PRIMARY KEY(import_batch_id,account_id),FOREIGN KEY(import_batch_id) REFERENCES import_batches(id) ON DELETE CASCADE,FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE)`,
-]];
-export const POST_MIGRATIONS:{version:number;sql:string[]}[]=[
-{version:4,sql:[
-`ALTER TABLE accounts ADD COLUMN model_name TEXT`,`ALTER TABLE accounts ADD COLUMN letter TEXT`,`ALTER TABLE accounts ADD COLUMN profile_image_url TEXT`,`ALTER TABLE accounts ADD COLUMN local_image_path TEXT`,`ALTER TABLE accounts ADD COLUMN source_url TEXT`,`ALTER TABLE accounts ADD COLUMN source_file_name TEXT`,`ALTER TABLE accounts ADD COLUMN source_file_type TEXT`,`ALTER TABLE accounts ADD COLUMN source_mime_type TEXT`,`ALTER TABLE accounts ADD COLUMN source_row INTEGER`,`ALTER TABLE accounts ADD COLUMN source_import_id INTEGER`,`ALTER TABLE accounts ADD COLUMN raw_data_json TEXT`,`ALTER TABLE accounts ADD COLUMN last_processed_at TEXT`,`CREATE INDEX IF NOT EXISTS idx_accounts_username ON accounts(username)`,`CREATE INDEX IF NOT EXISTS idx_accounts_model_name ON accounts(model_name)`,`CREATE INDEX IF NOT EXISTS idx_accounts_status ON accounts(status)`,`CREATE INDEX IF NOT EXISTS idx_accounts_letter ON accounts(letter)`,`CREATE INDEX IF NOT EXISTS idx_accounts_created ON accounts(created_at)`,`CREATE INDEX IF NOT EXISTS idx_accounts_updated ON accounts(updated_at)`,`CREATE INDEX IF NOT EXISTS idx_accounts_source_import ON accounts(source_import_id)`
-]},
-{version:5,sql:[
-`CREATE TABLE IF NOT EXISTS account_images(id INTEGER PRIMARY KEY AUTOINCREMENT,account_id INTEGER NOT NULL,remote_url TEXT,local_path TEXT,is_primary INTEGER NOT NULL DEFAULT 0,image_type TEXT,download_status TEXT NOT NULL DEFAULT 'NOT_DOWNLOADED',mime_type TEXT,file_size INTEGER,width INTEGER,height INTEGER,downloaded_at TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE)`,
-`CREATE INDEX IF NOT EXISTS idx_images_account ON account_images(account_id)`
-]},
-{version:6,sql:[
-`CREATE TABLE IF NOT EXISTS app_imports(id INTEGER PRIMARY KEY AUTOINCREMENT,source_file_name TEXT NOT NULL,source_file_type TEXT NOT NULL,source_mime_type TEXT,source_size INTEGER,imported_at TEXT NOT NULL,total_records INTEGER NOT NULL DEFAULT 0,new_records INTEGER NOT NULL DEFAULT 0,updated_records INTEGER NOT NULL DEFAULT 0,duplicates INTEGER NOT NULL DEFAULT 0,records_without_instagram INTEGER NOT NULL DEFAULT 0,records_with_instagram INTEGER NOT NULL DEFAULT 0,records_with_images INTEGER NOT NULL DEFAULT 0,records_without_images INTEGER NOT NULL DEFAULT 0,placeholder_images INTEGER NOT NULL DEFAULT 0,warning_count INTEGER NOT NULL DEFAULT 0,error_count INTEGER NOT NULL DEFAULT 0)`,
-`CREATE TABLE IF NOT EXISTS app_import_accounts(import_id INTEGER NOT NULL,account_id INTEGER NOT NULL,source_row INTEGER,PRIMARY KEY(import_id,account_id),FOREIGN KEY(import_id) REFERENCES app_imports(id) ON DELETE CASCADE,FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE)`,
-`CREATE TABLE IF NOT EXISTS list_accounts(list_id INTEGER NOT NULL,account_id INTEGER NOT NULL,created_at TEXT NOT NULL,PRIMARY KEY(list_id,account_id),FOREIGN KEY(list_id) REFERENCES lists(id) ON DELETE CASCADE,FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE)`,
-`CREATE INDEX IF NOT EXISTS idx_list_accounts_list ON list_accounts(list_id)`,`CREATE INDEX IF NOT EXISTS idx_list_accounts_account ON list_accounts(account_id)`
-]},
-{version:7,sql:[`CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT NOT NULL)`]}
+/** Versioned SQLite migrations. New schema changes are appended as migrations. */
+export const MIGRATIONS: string[][] = [
+  [
+    `CREATE TABLE IF NOT EXISTS lists (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE, instagram_url TEXT NOT NULL, display_name TEXT, image_url TEXT, status TEXT NOT NULL DEFAULT 'NEW', list_id INTEGER, source TEXT, notes TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY (list_id) REFERENCES lists(id) ON DELETE SET NULL)`,
+    `CREATE TABLE IF NOT EXISTS status_history (id INTEGER PRIMARY KEY AUTOINCREMENT, account_id INTEGER NOT NULL, old_status TEXT, new_status TEXT NOT NULL, created_at TEXT NOT NULL, FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE)`,
+    `CREATE TABLE IF NOT EXISTS import_batches (id INTEGER PRIMARY KEY AUTOINCREMENT, file_name TEXT NOT NULL, total_records INTEGER NOT NULL DEFAULT 0, new_records INTEGER NOT NULL DEFAULT 0, duplicate_records INTEGER NOT NULL DEFAULT 0, invalid_records INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS import_batch_accounts (import_batch_id INTEGER NOT NULL, account_id INTEGER NOT NULL, PRIMARY KEY (import_batch_id, account_id), FOREIGN KEY (import_batch_id) REFERENCES import_batches(id) ON DELETE CASCADE, FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE)`,
+    `CREATE INDEX IF NOT EXISTS idx_accounts_status_id ON accounts(status, id)`,
+    `CREATE INDEX IF NOT EXISTS idx_accounts_list_id ON accounts(list_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_accounts_created_at ON accounts(created_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_accounts_updated_at ON accounts(updated_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_history_account ON status_history(account_id, id)`,
+    `CREATE INDEX IF NOT EXISTS idx_iba_account ON import_batch_accounts(account_id)`,
+  ],
+  [
+    `ALTER TABLE accounts ADD COLUMN display_name TEXT`,
+    `ALTER TABLE accounts ADD COLUMN image_url TEXT`,
+  ],
+  [
+    `ALTER TABLE accounts ADD COLUMN full_name TEXT`,
+    `ALTER TABLE accounts ADD COLUMN profile_image_uri TEXT`,
+  ],
 ];

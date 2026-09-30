@@ -294,7 +294,7 @@ const outcome = await openProfile(account.username, {
             <Image source={{ uri: account.profile_image_uri || account.image_url || undefined }} style={styles.avatar} />
           ) : (
             <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
-              <Text style={[styles.avatarPlaceholderText, { color: colors.textMuted }]}>{(account.username?.[0] || account.model_name?.[0] || '?').toUpperCase()}</Text>
+              <Text style={[styles.avatarPlaceholderText, { color: colors.textMuted }]}>{(account.username[0] || '?').toUpperCase()}</Text>
             </View>
           )}
           <Text style={[styles.displayName, { color: colors.text }]} accessibilityRole='header' numberOfLines={2}>

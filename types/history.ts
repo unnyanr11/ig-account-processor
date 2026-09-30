@@ -1,2 +1,17 @@
-export interface StatusHistoryEntry{id:number;account_id:number;old_status:string|null;new_status:string;created_at:string;}
-export interface ImportBatch{id:number;file_name:string;file_type:string;mime_type:string|null;file_size:number|null;total_records:number;new_records:number;updated_records:number;duplicate_records:number;records_without_instagram:number;records_with_instagram:number;records_with_images:number;records_without_images:number;placeholder_images:number;warning_count:number;error_count:number;created_at:string;}
+export interface StatusHistoryEntry {
+  id: number;
+  account_id: number;
+  old_status: string | null;
+  new_status: string;
+  created_at: string;
+}
+
+export interface ImportBatch {
+  id: number;
+  file_name: string;
+  total_records: number;
+  new_records: number;
+  duplicate_records: number;
+  invalid_records: number;
+  created_at: string;
+}

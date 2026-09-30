@@ -1,3 +1,19 @@
-export const DB_NAME='ig_processor.db';export const APP_VERSION='2.0.0';export const DEFAULT_PAGE_SIZE=50;export const IMPORT_BATCH_SIZE=500;export const IMAGE_DOWNLOAD_CONCURRENCY=4;export const MAX_IMPORT_TEXT_BYTES=30*1024*1024;export const MAX_BACKUP_BYTES=100*1024*1024;
-export const IGNORED_IG_PATH_SEGMENTS=['explore','accounts','reels','reel','p','stories','direct','tv','about','legal','developer','web','api','graphql','embed','privacy','terms','session','challenge','lite'];
-export const USERNAME_MAX_LENGTH=30;export const USERNAME_REGEX=/^[a-z0-9._]{1,30}$/;export const SUPPORTED_IMPORT_EXTENSIONS=['.json','.csv','.xlsx','.xls','.tsv','.txt','.jsonl','.ndjson','.xml','.html'];export const PLACEHOLDER_IMAGE_URLS=['https://www.babepedia.com/images/advanced-search.png'];export const STORAGE_KEYS={SETTINGS:'app_settings'};
+export const DB_NAME = 'ig_processor.db';
+export const APP_VERSION = '1.0.0';
+export const DEFAULT_PAGE_SIZE = 50;
+
+// Instagram path segments that are never profiles.
+export const IGNORED_IG_PATH_SEGMENTS = [
+  'explore', 'accounts', 'reels', 'reel', 'p', 'stories', 'direct', 'tv',
+  'about', 'legal', 'developer', 'web', 'api', 'graphql', 'embed',
+  'privacy', 'terms', 'session', 'challenge', 'lite',
+];
+
+export const USERNAME_MAX_LENGTH = 30;
+export const USERNAME_REGEX = /^[a-z0-9._]{1,30}$/;
+
+export const SUPPORTED_IMPORT_EXTENSIONS = ['.xlsx', '.xls', '.csv', '.txt', '.json'];
+
+export const STORAGE_KEYS = {
+  SETTINGS: 'app_settings',
+};

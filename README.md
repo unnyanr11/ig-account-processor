@@ -1,77 +1,114 @@
 # IG Account Processor
 
-Production-oriented Android app built with Expo, React Native, TypeScript, Expo Router and SQLite for local-first, manual Instagram account processing.
+An Android app (React Native, Expo, TypeScript) for working through a long list of Instagram accounts by hand. Import usernames from Excel, CSV or TXT files, keep them in a local SQLite database, and step through them one at a time: open the profile, act in Instagram yourself, come back and record the result.
 
-## Core rules
+**What the app never does:** follow, unfollow, like, comment or message; scrape Instagram; log in; ask for a password; store cookies or tokens; tap inside Instagram. The only Instagram interaction is opening a profile link.
 
-- Filename-independent: filename is provenance metadata only. Parser/schema selection is based on content, extension and MIME evidence.
-- Data-preserving: normalized fields are optimized for search; the original imported row is retained in raw_data_json.
-- Local-first: accounts, status history, imports, lists, images and settings are stored locally.
-- Manual Instagram use only: the app can open a profile, but never logs in, scrapes Instagram, follows/unfollows, likes, comments, DMs, simulates taps, stores credentials, or bypasses restrictions.
-- Scalable: SQLite indexes, paginated account queries, batched imports and controlled image downloads are used for large datasets.
+## Status
 
-## Import formats
+The code was written and reviewed but **has not yet been installed, type-checked or run on a device** (it was authored in an environment without a device or a package registry). Expect to fix a few compile or runtime issues on the first run. Work through the testing checklist below, and use `npm run typecheck` first.
 
-Supported: JSON, JSONL, NDJSON, CSV, TSV, XLSX, XLS, TXT, XML and HTML.
+## Features
 
-The importer detects common JSON object-wrapped arrays (models, accounts, users, profiles, data, items, results, records, rows), flexible CSV headers, headerless delimited data, UTF-8 BOM, CRLF/LF, quoted cells and embedded commas.
+- Import from XLSX, XLS, CSV, TXT, or pasted text, with a preview before anything is saved
+- Username extraction from plain names, @names and instagram.com links (profile links only; /p/, /reels/, /explore/, /stories/, /direct/, /accounts/ are ignored)
+- Duplicate detection inside a file and against the database; usernames are stored lowercase and are unique
+- Import history, with the accounts linked to each imported file (including ones that already existed)
+- Processing queue: one account at a time, five status buttons, auto-next, undo, previous and next, and processing modes (unprocessed only, all, or one status)
+- Search over username, notes and source; status filters plus Imported Today, Updated Today and Never Processed
+- Lists (create, rename, delete, move accounts), notes, and a full status history per account
+- Statistics that keep imported and processed counts separate, with per-list numbers
+- Export to CSV, TXT or XLSX; backup and restore as a JSON file
+- Light, dark and system themes; large touch targets; screen-reader labels; status is shown with a symbol and text as well as color
 
-Known mappings include model name, Instagram username, Instagram URL, profile image, source and letter fields with common naming variants. Unknown fields remain in the original row.
+## Project structure
 
-Missing values such as N/A, NA, null, -, and empty strings are treated as missing where appropriate. Missing Instagram information does not discard the record.
+```
+app/            Expo Router screens (dashboard, import, queue, accounts, account/[id],
+                lists, history, statistics, export, settings)
+components/     Reusable UI (AccountBrowser, AccountCard, StatusButton, dialogs, ...)
+database/       SQLite only: schema and migrations, connection, repositories, backup dump/restore
+services/       File parsing, username extraction, import, export, backup, Instagram opening, settings
+utils/          Constants, normalization, validation, theme, hooks
+types/          Shared TypeScript types
+```
 
-## Identity and processing
+Screens call repositories (`database/index.ts`), never SQL. The interfaces in `database/interfaces.ts` are the seam for a later Supabase sync: wrap the SQLite repositories, write locally first, and queue remote writes. Nothing in the app talks to a server today.
 
-When present, normalized Instagram username is the strongest identity signal. @handles, profile URLs and common URL formatting variants normalize to the same lowercase username. Non-profile Instagram routes such as /explore, /reels, /p, /stories, /direct and /accounts are not treated as usernames.
+## Setup
 
-Records without Instagram usernames receive a stable database ID and remain available for browsing, editing, lists, notes and export. The app never invents a username from a model name.
+Requirements: Node 18+, an Android phone or emulator.
 
-Processing statuses include New, Followed, Skipped, Unavailable, Already Following, Not Interested, No Instagram, Image Unavailable and Check Later. Status changes are persisted and recorded in history, with temporary undo.
+```
+npm install
+npx expo install --check
+npm run typecheck
+npx expo start
+```
 
-## Images
+`expo install --check` aligns package versions with the installed Expo SDK. Add `icon.png`, `splash.png` and adaptive icon images under `assets/` and reference them in `app.json` before a store release.
 
-Imported image URLs are preserved. The generic Babepedia advanced-search placeholder is recognized and is never bulk-downloaded as a genuine profile image.
+## Building for Android with EAS
 
-Actual images are stored in the application filesystem, not SQLite. SQLite stores metadata and local paths. Downloads use a controlled concurrency queue and validate HTTP(S) sources. The UI prefers local images, then remote URLs, then a placeholder.
+```
+npm install -g eas-cli
+eas login
+eas build --profile development --platform android
+npx expo start --dev-client
+```
 
-The app does not fetch or scrape Instagram pages to obtain names or images.
+- `development`: a development-client APK for daily work
+- `preview`: an installable APK for testing (`eas build --profile preview --platform android`)
+- `production`: an app bundle for Google Play
 
-## Database
+The first `eas build` will offer to set up credentials.
 
-The database uses forward migrations and keeps legacy data intact. Modern tables include accounts, account_images, status_history, lists, list_accounts, app_imports, app_import_accounts, legacy import-history tables, and settings.
+## Permissions
 
-Frequently searched fields have SQLite indexes. Accounts are queried with pagination instead of loading the full dataset into React state.
+The app declares none.
 
-## Backup, restore and hard reset
+- Files are chosen with the Android system picker, which grants access to the chosen file only, so no storage permission is needed.
+- Exports and backups go through the system share sheet.
+- Opening Instagram or a browser uses a normal link intent.
+- Optional profile metadata enrichment may fetch the public Instagram profile page for username/full-name/avatar data (no login, no credentials, no password storage). Cached avatar files are stored locally for offline rendering.
 
-Backups contain the local database tables and metadata. Restore validates the backup structure before replacing data and performs replacement transactionally.
+## How opening a profile works
 
-Hard Reset is available in Settings → Data. It requires typing RESET exactly and removes only this application's local data. It does not interact with Instagram or attempt to bypass external enforcement.
+1. If Prefer Instagram app is on, the app opens `instagram://user?username=NAME`. Android hands this to Instagram when it is installed and rejects it otherwise.
+2. If that fails and Browser fallback is on (or the app is not preferred), the app opens `https://www.instagram.com/NAME/`. Android sends it to Instagram if that app handles the link, or to the browser.
+3. If neither can be opened, a friendly message is shown.
 
-## Android setup
+The app does not log in, read the page, or interact with Instagram. When you return, you pick the status yourself.
 
-Requirements: Node 18+, Android device/emulator.
+## Data model
 
-    npm install
-    npx expo install --check
-    npm run typecheck
-    npm test
-    npx expo start
+`accounts` (unique lowercase `username`, optional `display_name`/`full_name`, optional remote `image_url` and cached local `profile_image_uri`, `status`, `list_id`, `source`, `notes`, timestamps), `lists`, `status_history` (every status change, including undo), `import_batches` and `import_batch_accounts` (which accounts appeared in which import). Migrations are versioned with `PRAGMA user_version` in `database/schema.ts`; add new schema versions by appending, never by editing old ones. Indexes cover status, list, created and updated times, and history lookups.
 
-For an EAS Android build:
+## Backup and restore
 
-    npm install -g eas-cli
-    eas login
-    eas build --profile preview --platform android
+Backup writes one JSON file containing every table. Restore validates the whole file first (structure, types, allowed statuses, username format, uniqueness and every cross-reference) and only then replaces the data in a single transaction. Any failure rolls back and leaves the current data unchanged. A restore always asks for confirmation.
 
-The app uses the Android system document picker and does not require broad storage permission.
+## Testing checklist
 
-## Validation
+- Empty file, file with no usernames, corrupt XLSX, unsupported extension, a very large file
+- 10, 1,000, 10,000 and 25,000+ accounts: import speed, scrolling, search, queue navigation
+- Import the same file twice, then a second file that overlaps the first; check the counts in the preview and in Import History
+- Invalid usernames (double dots, over 30 characters, non-ASCII)
+- Status change, undo, auto-next on and off, all three processing modes, previous and next
+- Restart the app and confirm nothing is lost
+- Export each format and open it in a spreadsheet app
+- Backup, add data, restore, confirm the earlier state; try restoring a hand-edited or truncated file
+- Instagram installed and not installed, with browser fallback on and off
+- Dark mode and a screen reader pass
 
-Tests cover filename independence, JSON/CSV schema recognition, quoted CSV/BOM/CRLF, missing Instagram values, JSONL/NDJSON/TSV, misleading extensions, malformed input, and duplicate/normalization behavior.
+## Known limitations
 
-Before release, test on-device with 1,000 / 10,000 / 25,000 / 50,000-record datasets, image downloads, backup/restore, hard reset, dark/light/system themes, screen readers, and Instagram installed/uninstalled browser fallback.
+- Spreadsheets are parsed on the JavaScript thread, so a very large XLSX (tens of MB) can make the app stutter while it reads. Files over 30 MB are refused with a message.
+- An account shown in the app lists only its first source file; the full set of imports is in Import History.
+- Search is a substring scan, not a full-text index. Measure it before relying on it at 50,000 accounts.
+- Some installed dependencies may be unnecessary (for example the reanimated and gesture-handler packages); trim them once the app runs.
+- Restoring replaces data; the app keeps no automatic backups.
 
 ## Privacy
 
-The core application has no account system, analytics, cloud sync or Instagram credentials. Imported data and local images remain on the device unless the user explicitly exports or shares them.
+Everything is stored in a local SQLite database on the device. The app has no accounts, analytics or network calls of its own.
