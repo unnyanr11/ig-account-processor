@@ -39,12 +39,6 @@ export default function ImportScreen() {
     }
   };
 
-  const reset = () => {
-    setSelectedName(null);
-    setRows([]);
-    setError(null);
-  };
-
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ title: 'Import Accounts' }} />
@@ -67,7 +61,6 @@ export default function ImportScreen() {
           )}
         />
       ) : selectedName && !loading ? <Text style={styles.empty}>No records found in this file.</Text> : null}
-      {selectedName ? <Button title="Choose another file" onPress={reset} /> : null}
     </View>
   );
 }
