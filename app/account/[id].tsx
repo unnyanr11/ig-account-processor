@@ -8,6 +8,7 @@ import type { List } from '../../types/list';
 import { toUserMessage } from '../../services/errors';
 import { openProfile } from '../../services/instagram';
 import { fetchProfileMetadata } from '../../services/profileImage';
+import { downloadImage } from '../../services/imageDownloadService';
 import { statusLabel } from '../../utils/format';
 import { formatDateHuman, formatDateTimeHuman } from '../../utils/normalization';
 import { useSettings } from '../../utils/useSettings';
@@ -134,6 +135,14 @@ const outcome = await openProfile(account.username, {
     if (!outcome.ok) Alert.alert('Could not open Instagram', outcome.message);
   };
 
+  const downloadLocal = () => run(async () => {
+    const remote = account?.profile_image_url ?? account?.image_url;
+    if (!account || !remote) throw new Error('No usable image URL is available for this account.');
+    const local = await downloadImage(account.id, remote);
+    if (!local) throw new Error('The image could not be downloaded.');
+    await accountRepository.updateMetadata(account.id, { profile_image_uri: local });
+  }, 'Image downloaded locally');
+
   const refreshIdentity = () => run(async () => {
     if (!account) return;
     const metadata = await fetchProfileMetadata({
@@ -200,6 +209,8 @@ const outcome = await openProfile(account.username, {
           <Text style={[styles.secondaryText, { color: colors.text }]}>Refresh profile info</Text>
         </Pressable>
       ) : null}
+
+      {(account.profile_image_url || account.image_url) ? <Pressable onPress={() => void downloadLocal()} disabled={busy} accessibilityRole='button' style={[styles.secondary, { backgroundColor: colors.surfaceAlt, opacity: busy ? 0.6 : 1 }]}><Text style={[styles.secondaryText, { color: colors.text }]}>Download Image</Text></Pressable> : null}
 
       <Pressable onPress={openInstagram} accessibilityRole='button' accessibilityLabel={`Open ${account.username} on Instagram`} style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}>
         <Text style={styles.primaryText}>Open Instagram</Text>

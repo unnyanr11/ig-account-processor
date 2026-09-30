@@ -14,7 +14,7 @@ function buildWhere(filters: AccountFilters): { where: string; params: Param[] }
   const params: Param[] = [];
   if (filters.status) { clauses.push('a.status = ?'); params.push(filters.status); }
   if (filters.listId === null) clauses.push('a.list_id IS NULL'); else if (filters.listId !== undefined) { clauses.push('a.list_id = ?'); params.push(filters.listId); }
-  if (filters.importBatchId !== undefined) { clauses.push('a.id IN (SELECT account_id FROM import_batch_accounts WHERE import_batch_id = ?)'); params.push(filters.importBatchId); }
+  if (filters.importBatchId !== undefined) { clauses.push('a.id IN (SELECT account_id FROM app_import_accounts WHERE import_id = ?)'); params.push(filters.importBatchId); }
   const term = filters.search?.trim();
   if (term) { const like = `%${escapeLike(term)}%`; clauses.push(`(a.username LIKE ? ESCAPE '!' OR a.display_name LIKE ? ESCAPE '!' OR a.full_name LIKE ? ESCAPE '!' OR a.notes LIKE ? ESCAPE '!' OR a.source LIKE ? ESCAPE '!')`); params.push(like, like, like, like, like); }
   if (filters.importedToday) { const [start, end] = todayRange(); clauses.push('a.created_at >= ? AND a.created_at < ?'); params.push(start, end); }
