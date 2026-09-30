@@ -9,6 +9,10 @@ export interface BackupAccount {
   id: number;
   username: string;
   instagram_url: string;
+  display_name: string | null;
+  full_name: string | null;
+  image_url: string | null;
+  profile_image_uri: string | null;
   status: string;
   list_id: number | null;
   source: string | null;

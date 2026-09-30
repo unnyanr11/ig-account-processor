@@ -70,7 +70,7 @@ The app declares none.
 - Files are chosen with the Android system picker, which grants access to the chosen file only, so no storage permission is needed.
 - Exports and backups go through the system share sheet.
 - Opening Instagram or a browser uses a normal link intent.
-- There is no `INTERNET`-dependent feature; imported data never leaves the device.
+- Optional profile metadata enrichment may fetch the public Instagram profile page for username/full-name/avatar data (no login, no credentials, no password storage). Cached avatar files are stored locally for offline rendering.
 
 ## How opening a profile works
 
@@ -82,7 +82,7 @@ The app does not log in, read the page, or interact with Instagram. When you ret
 
 ## Data model
 
-`accounts` (unique lowercase `username`, `status`, `list_id`, `source`, `notes`, timestamps), `lists`, `status_history` (every status change, including undo), `import_batches` and `import_batch_accounts` (which accounts appeared in which import). Migrations are versioned with `PRAGMA user_version` in `database/schema.ts`; add new schema versions by appending, never by editing old ones. Indexes cover status, list, created and updated times, and history lookups.
+`accounts` (unique lowercase `username`, optional `display_name`/`full_name`, optional remote `image_url` and cached local `profile_image_uri`, `status`, `list_id`, `source`, `notes`, timestamps), `lists`, `status_history` (every status change, including undo), `import_batches` and `import_batch_accounts` (which accounts appeared in which import). Migrations are versioned with `PRAGMA user_version` in `database/schema.ts`; add new schema versions by appending, never by editing old ones. Indexes cover status, list, created and updated times, and history lookups.
 
 ## Backup and restore
 

@@ -3,7 +3,9 @@ import { parseFile, type ParsedRow } from './fileParser.ts';
 export type ImportRecord = {
   username: string;
   displayName: string | null;
+  fullName: string | null;
   imageUrl: string | null;
+  profileImageUri: string | null;
   instagramUrl: string;
   raw: ParsedRow;
 };
@@ -78,10 +80,13 @@ export function parseImportFile(content: string, fileName: string): ParsedRow[] 
 
 export async function analyzeImport(content: string, fileName: string, findExisting: (usernames: string[]) => Promise<Set<string>>): Promise<ImportAnalysis> {
   const rows = parseImportFile(content, fileName);
-  const records: ImportRecord[] = rows.flatMap((row) => {
-    const displayName = first(row, ['name', 'fullName', 'full_name', 'displayName', 'display_name']) || null;
+  const records: ImportRecord[] = rows.map((row) => {
+    const username = usernameFromRow(row);
+    const displayName = first(row, ['displayName', 'display_name', 'name']) || null;
+    const fullName = first(row, ['fullName', 'full_name']) || displayName;
     const imageUrl = first(row, ['profilePictureUrl', 'profileImageUrl', 'imageUrl', 'profile_pic_url', 'profile_image_url', 'avatar', 'picture', 'image', 'photo']) || null;
-    return usernameCandidatesFromRow(row).map((username) => ({ username, displayName, imageUrl, instagramUrl: username ? `https://instagram.com/${username}` : '', raw: row }));
+    const profileImageUri = first(row, ['profileImageUri', 'profile_image_uri']) || null;
+    return { username, displayName, fullName, imageUrl, profileImageUri, instagramUrl: username ? `https://instagram.com/${username}` : '', raw: row };
   });
   const validRecords = records.filter((record) => USERNAME_PATTERN.test(record.username));
   const invalid = records.length - validRecords.length;

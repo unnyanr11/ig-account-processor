@@ -1,125 +1,111 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import * as FileSystem from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
-import type { AccountFilters } from '../database';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { accountRepository, type AccountFilters } from '../database';
+import AccountCard from './AccountCard';
+import EmptyState from './EmptyState';
+import FilterBar, { type FilterOption } from './FilterBar';
+import SearchBar from './SearchBar';
+import { AccountStatus, ACCOUNT_STATUSES, STATUS_LABELS, type AccountWithList } from '../types/account';
+import { useTheme } from '../utils/useTheme';
+import { useDebouncedValue } from '../utils/useDebouncedValue';
+
+const PAGE_SIZE = 50;
 
 export type AccountBrowserProps = {
   baseFilters?: AccountFilters;
   header?: React.ReactNode;
 };
 
-type AccountRecord = {
-  id?: string | number;
-  name?: string | null;
-  fullName?: string | null;
-  username?: string | null;
-  profilePictureUrl?: string | null;
-  profileImageUrl?: string | null;
-  imageUrl?: string | null;
-};
+export default function AccountBrowser({ baseFilters = {}, header }: AccountBrowserProps) {
+  const router = useRouter();
+  const { colors } = useTheme();
+  const [accounts, setAccounts] = useState<AccountWithList[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState<'ALL' | AccountStatus>('ALL');
+  const debouncedSearch = useDebouncedValue(search, 200);
 
-const getDisplayName = (account: AccountRecord) =>
-  account.name?.trim() || account.fullName?.trim() || 'Name not available';
+  const filters = useMemo<AccountFilters>(() => ({
+    ...baseFilters,
+    search: debouncedSearch.trim() || undefined,
+    status: status === 'ALL' ? baseFilters.status : status,
+  }), [baseFilters, debouncedSearch, status]);
 
-const getUsername = (account: AccountRecord) => account.username?.trim() || '';
+  const filterOptions = useMemo<FilterOption[]>(() => ([
+    { key: 'ALL', label: 'All' },
+    ...ACCOUNT_STATUSES.map((value) => ({ key: value, label: STATUS_LABELS[value] })),
+  ]), []);
 
-const getImageUrl = (account: AccountRecord) =>
-  account.profilePictureUrl || account.profileImageUrl || account.imageUrl || '';
-
-export default function AccountBrowser({
-  baseFilters = {},
-  header,
-}: AccountBrowserProps) {
-  const [accounts, setAccounts] = useState<AccountRecord[]>([]);
+  const load = useCallback(async (reset: boolean, offset = 0) => {
+    const nextOffset = reset ? 0 : offset;
+    if (reset) setLoading(true);
+    else setLoadingMore(true);
+    try {
+      const [rows, count] = await Promise.all([
+        accountRepository.getPage(filters, PAGE_SIZE, nextOffset),
+        accountRepository.count(filters),
+      ]);
+      setError('');
+      setTotal(count);
+      setAccounts((prev) => (reset ? rows : [...prev, ...rows]));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not load accounts.');
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [filters]);
 
   useEffect(() => {
-    let active = true;
-    void baseFilters;
-    if (active) setAccounts([]);
-    return () => {
-      active = false;
-    };
-  }, [baseFilters]);
-
-  const downloadImage = useCallback(async (account: AccountRecord) => {
-    const imageUrl = getImageUrl(account);
-    if (!imageUrl) {
-      Alert.alert('Image unavailable', 'This account does not have a profile image.');
-      return;
-    }
-
-    try {
-      const safeId = String(
-        (account.id ?? getUsername(account)) || 'account'
-      ).replace(/[^a-z0-9_-]/gi, '_');
-      const target = `${FileSystem.cacheDirectory}${safeId}-profile.jpg`;
-      const result = await FileSystem.downloadAsync(imageUrl, target);
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(result.uri, {
-          mimeType: 'image/jpeg',
-          dialogTitle: 'Save profile image',
-        });
-      } else {
-        Alert.alert('Image downloaded', `The profile image was downloaded to ${result.uri}`);
-      }
-    } catch {
-      Alert.alert('Download failed', 'Unable to download this profile image.');
-    }
-  }, []);
+    void load(true);
+  }, [load]);
 
   return (
-    <View style={styles.container}>
-      {header}
-      {accounts.map((account) => {
-        const username = getUsername(account);
-        const imageUrl = getImageUrl(account);
-        return (
-          <View key={String(account.id ?? username ?? Math.random())} style={styles.card}>
-            <Text style={styles.name}>{getDisplayName(account)}</Text>
-            {imageUrl ? (
-              <Image source={{ uri: imageUrl }} style={styles.image} />
-            ) : (
-              <View style={styles.imagePlaceholder}>
-                <Text>No image available</Text>
-              </View>
-            )}
-            <Text style={styles.username}>
-              {username ? `@${username}` : 'Username not available'}
-            </Text>
-            {imageUrl ? (
-              <Pressable style={styles.downloadButton} onPress={() => downloadImage(account)}>
-                <Text style={styles.downloadText}>Download image</Text>
-              </Pressable>
-            ) : null}
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <FlatList
+        data={accounts}
+        keyExtractor={(item) => String(item.id)}
+        contentContainerStyle={styles.content}
+        renderItem={({ item }) => (
+          <AccountCard
+            account={item}
+            colors={colors}
+            onPress={() => router.push({ pathname: '/account/[id]', params: { id: String(item.id) } })}
+          />
+        )}
+        onEndReachedThreshold={0.2}
+        onEndReached={() => {
+          if (!loading && !loadingMore && accounts.length < total) void load(false, accounts.length);
+        }}
+        ListHeaderComponent={(
+          <View style={styles.header}>
+            {header}
+            <SearchBar value={search} onChangeText={setSearch} colors={colors} />
+            <FilterBar options={filterOptions} selectedKey={status} onSelect={(key) => setStatus(key as 'ALL' | AccountStatus)} colors={colors} />
+            {error ? <Text style={[styles.error, { color: colors.danger }]}>{error}</Text> : null}
           </View>
-        );
-      })}
+        )}
+        ListEmptyComponent={loading ? null : <EmptyState colors={colors} title='No accounts found' message='Try a different search or filter.' />}
+        ListFooterComponent={loadingMore ? <ActivityIndicator style={styles.loader} color={colors.primary} /> : null}
+      />
+      {loading ? (
+        <View style={styles.overlay}>
+          <ActivityIndicator color={colors.primary} size='large' />
+        </View>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  card: { padding: 16, marginBottom: 12, borderRadius: 12, backgroundColor: '#fff' },
-  name: { fontSize: 18, fontWeight: '700', marginBottom: 10 },
-  image: { width: 120, height: 120, borderRadius: 60, marginBottom: 10 },
-  imagePlaceholder: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    marginBottom: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#eee',
-  },
-  username: { color: '#666', marginBottom: 10 },
-  downloadButton: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: '#2563eb',
-  },
-  downloadText: { color: '#fff', fontWeight: '600' },
+  container: { flex: 1 },
+  content: { padding: 16, paddingBottom: 32, gap: 10 },
+  header: { gap: 10, marginBottom: 2 },
+  loader: { marginVertical: 14 },
+  overlay: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
+  error: { fontSize: 14 },
 });
