@@ -6,3 +6,5 @@ test('supports JSONL and NDJSON',()=>{assert.equal(parseFile('{"username":"one"}
 test('supports TSV and headerless CSV',()=>{assert.equal(parseFile('username\tone\nusername\ttwo','x.tsv').rows.length,2);assert.deepEqual(parseCsv('alpha\n@beta'),[{column_1:'alpha'},{column_1:'@beta'}]);});
 test('detects JSON from misleading TXT content',()=>{assert.equal(parseFile('[{"username":"x"}]','data.txt').format,'JSON');});
 test('malformed JSON and CSV produce actionable errors',()=>{assert.throws(()=>parseJson('{bad'),/Malformed JSON/);assert.throws(()=>parseCsv('username\n"bad'),/Malformed delimited file/);});
+
+test('detects CSV and TSV from content when extension is misleading',()=>{assert.equal(parseFile('Model Name,Instagram Username\nA,@a','renamed.txt').format,'CSV');assert.equal(parseFile('Model Name\tInstagram Username\nB\t@b','renamed.txt').format,'TSV');});
