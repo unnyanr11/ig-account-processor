@@ -62,11 +62,11 @@ export default function ImportScreen() {
       {!reviewing ? (
         <>
           <Text style={styles.title}>Import accounts</Text>
-          <Text style={styles.description}>Choose a JSON, CSV, or Excel file to preview its records.</Text>
+          <Text style={styles.description}>Choose a JSON, CSV, or Excel file.</Text>
           <Button title={loading ? 'Reading file…' : 'Select JSON, CSV, or Excel file'} onPress={pickFile} disabled={loading} />
           {loading ? <ActivityIndicator style={styles.progress} /> : null}
           {error ? <Text style={styles.error}>{error}</Text> : null}
-          {selectedName ? <Text style={styles.fileName}>{selectedName} — {rows.length} record{rows.length === 1 ? '' : 's'}</Text> : null}
+          {selectedName ? <Text style={styles.fileName}>{selectedName} — {rows.length} record{rows.length === 1 ? '' : 's'} loaded</Text> : null}
           {rows.length > 0 ? <View style={styles.nextButton}><Button title="Next" onPress={() => { setCurrentIndex(0); setReviewing(true); }} /></View> : null}
           {rows.length === 0 && selectedName && !loading ? <Text style={styles.empty}>No records found in this file.</Text> : null}
         </>
