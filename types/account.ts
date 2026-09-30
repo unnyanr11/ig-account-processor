@@ -7,7 +7,6 @@ export enum AccountStatus {
   NOT_INTERESTED = 'NOT_INTERESTED',
 }
 
-// Add a new status here and in the three maps below; nothing else needs to change.
 export const ACCOUNT_STATUSES: AccountStatus[] = Object.values(AccountStatus);
 
 export const STATUS_LABELS: Record<AccountStatus, string> = {
@@ -28,7 +27,6 @@ export const STATUS_COLORS: Record<AccountStatus, string> = {
   [AccountStatus.NOT_INTERESTED]: '#E15554',
 };
 
-// Symbols keep status readable without relying on color alone.
 export const STATUS_SYMBOLS: Record<AccountStatus, string> = {
   [AccountStatus.NEW]: '●',
   [AccountStatus.FOLLOWED]: '✓',
@@ -42,6 +40,8 @@ export interface Account {
   id: number;
   username: string;
   instagram_url: string;
+  display_name: string | null;
+  image_url: string | null;
   status: AccountStatus;
   list_id: number | null;
   source: string | null;

@@ -2,14 +2,8 @@ import { Account, AccountStatus, AccountWithList } from '../types/account';
 import { ImportBatch, StatusHistoryEntry } from '../types/history';
 import { List, ListWithStats } from '../types/list';
 
-/**
- * Repository contracts. Screens and services depend on these, never on SQL.
- * A future sync layer can implement the same interfaces (SQLite + Supabase).
- */
-
 export interface AccountFilters {
   status?: AccountStatus;
-  /** number = that list, null = accounts without a list, undefined = any */
   listId?: number | null;
   importBatchId?: number;
   search?: string;
@@ -20,6 +14,8 @@ export interface AccountFilters {
 export interface NewAccountInput {
   username: string;
   instagram_url: string;
+  display_name?: string | null;
+  image_url?: string | null;
   source: string | null;
   list_id: number | null;
 }
@@ -38,21 +34,18 @@ export interface AccountRepository {
   findExistingUsernames(usernames: string[]): Promise<Set<string>>;
   getIdsByUsernames(usernames: string[]): Promise<number[]>;
   insertMany(inputs: NewAccountInput[], onProgress?: (done: number, total: number) => void): Promise<Map<string, number>>;
-  /** Updates status and writes a history row atomically. Returns the previous status. */
   setStatus(id: number, status: AccountStatus): Promise<AccountStatus>;
   setNotes(id: number, notes: string): Promise<void>;
   moveToList(id: number, listId: number | null): Promise<void>;
   getStatusCounts(listId?: number | null): Promise<StatusCounts>;
   getFirstId(filters: AccountFilters): Promise<number | null>;
   getAdjacentId(filters: AccountFilters, currentId: number, direction: Direction): Promise<number | null>;
-  /** 1-based position of the account within the filtered set. */
   getPosition(filters: AccountFilters, id: number): Promise<number>;
 }
 
 export interface ListRepository {
   create(name: string): Promise<number>;
   rename(id: number, name: string): Promise<void>;
-  /** Accounts are kept (unassigned) unless deleteAccounts is true. */
   remove(id: number, deleteAccounts: boolean): Promise<void>;
   getAll(): Promise<List[]>;
   getById(id: number): Promise<List | null>;
