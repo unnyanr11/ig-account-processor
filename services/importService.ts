@@ -29,8 +29,8 @@ const first = (row: ParsedRow, keys: string[]): string => { for (const key of ke
 
 function usernameFromRow(row: ParsedRow): string {
   const value = first(row, ['username', 'userName', 'user_name', 'handle', 'screen_name', 'instagram', 'profile', 'url', 'link']);
-  const match = value.match(/instagram\\.com\\/([A-Za-z0-9._]+)/i);
-  return (match ? match[1] : value).replace(/^@/, '').replace(/\\/$/, '').trim().toLowerCase();
+  const match = value.match(/instagram\.com\/([A-Za-z0-9._]+)/i);
+  return (match ? match[1] : value).replace(/^@/, '').replace(/\/$/, '').trim().toLowerCase();
 }
 
 export function parseImportFile(content: string, fileName: string): ParsedRow[] { return parseFile(content, fileName); }
