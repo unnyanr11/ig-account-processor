@@ -17,4 +17,8 @@ export const MIGRATIONS: string[][] = [
     `ALTER TABLE accounts ADD COLUMN display_name TEXT`,
     `ALTER TABLE accounts ADD COLUMN image_url TEXT`,
   ],
+  [
+    `ALTER TABLE accounts ADD COLUMN full_name TEXT`,
+    `ALTER TABLE accounts ADD COLUMN profile_image_uri TEXT`,
+  ],
 ];

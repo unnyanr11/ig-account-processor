@@ -3,7 +3,9 @@ import { parseFile, type ParsedRow } from './fileParser';
 export type ImportRecord = {
   username: string;
   displayName: string | null;
+  fullName: string | null;
   imageUrl: string | null;
+  profileImageUri: string | null;
   instagramUrl: string;
   raw: ParsedRow;
 };
@@ -39,9 +41,11 @@ export async function analyzeImport(content: string, fileName: string, findExist
   const rows = parseImportFile(content, fileName);
   const records: ImportRecord[] = rows.map((row) => {
     const username = usernameFromRow(row);
-    const displayName = first(row, ['name', 'fullName', 'full_name', 'displayName', 'display_name']) || null;
+    const displayName = first(row, ['displayName', 'display_name', 'name']) || null;
+    const fullName = first(row, ['fullName', 'full_name']) || displayName;
     const imageUrl = first(row, ['profilePictureUrl', 'profileImageUrl', 'imageUrl', 'profile_pic_url', 'profile_image_url', 'avatar', 'picture', 'image', 'photo']) || null;
-    return { username, displayName, imageUrl, instagramUrl: username ? `https://instagram.com/${username}` : '', raw: row };
+    const profileImageUri = first(row, ['profileImageUri', 'profile_image_uri']) || null;
+    return { username, displayName, fullName, imageUrl, profileImageUri, instagramUrl: username ? `https://instagram.com/${username}` : '', raw: row };
   });
   const validRecords = records.filter((record) => /^[a-z0-9._]{1,30}$/.test(record.username));
   const invalid = records.length - validRecords.length;
