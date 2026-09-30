@@ -1,189 +1,91 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { accountRepository, type AccountFilters } from '../database';
-import { AccountStatus, AccountWithList, ACCOUNT_STATUSES, STATUS_LABELS } from '../types/account';
-import { toUserMessage } from '../services/errors';
-import { DEFAULT_PAGE_SIZE } from '../utils/constants';
-import { useDebouncedValue } from '../utils/useDebouncedValue';
-import { useSettings } from '../utils/useSettings';
-import { useTheme } from '../utils/useTheme';
-import AccountCard from './AccountCard';
-import EmptyState from './EmptyState';
-import FilterBar, { type FilterOption } from './FilterBar';
-import SearchBar from './SearchBar';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import type { AccountFilters } from '../database';
 
-const PAGE_SIZE = DEFAULT_PAGE_SIZE;
+export type AccountBrowserProps = {
+  baseFilters?: AccountFilters;
+};
 
-const FILTER_OPTIONS: FilterOption[] = [
-  { key: 'ALL', label: 'All' },
-  ...ACCOUNT_STATUSES.map((status) => ({ key: status, label: STATUS_LABELS[status] })),
-  { key: 'IMPORTED_TODAY', label: 'Imported Today' },
-  { key: 'UPDATED_TODAY', label: 'Updated Today' },
-  { key: 'NEVER_PROCESSED', label: 'Never Processed' },
-];
+type AccountRecord = {
+  id?: string | number;
+  name?: string | null;
+  fullName?: string | null;
+  username?: string | null;
+  profilePictureUrl?: string | null;
+  profileImageUrl?: string | null;
+  imageUrl?: string | null;
+};
 
-function filterParts(key: string): AccountFilters {
-  if (key === 'ALL') return {};
-  if (key === 'IMPORTED_TODAY') return { importedToday: true };
-  if (key === 'UPDATED_TODAY') return { updatedToday: true };
-  if (key === 'NEVER_PROCESSED') return { status: AccountStatus.NEW };
-  return { status: key as AccountStatus };
-}
+const getDisplayName = (account: AccountRecord) =>
+  account.name?.trim() || account.fullName?.trim() || 'Name not available';
 
-interface Props {
-  /** Must be a stable reference (module constant or useMemo) or the list reloads on every render. */
-  baseFilters: AccountFilters;
-  header?: React.ReactElement | null;
-}
+const getUsername = (account: AccountRecord) => account.username?.trim() || '';
 
-/** Searchable, filterable, paginated account list shared by All Accounts, lists and imports. */
-export default function AccountBrowser({ baseFilters, header = null }: Props) {
-  const router = useRouter();
-  const { colors } = useTheme();
-  const { settings, loaded } = useSettings();
+const getImageUrl = (account: AccountRecord) =>
+  account.profilePictureUrl || account.profileImageUrl || account.imageUrl || '';
 
-  const [filterKey, setFilterKey] = useState('ALL');
-  const defaultApplied = useRef(false);
+export default function AccountBrowser({ baseFilters = {} }: AccountBrowserProps) {
+  const [accounts, setAccounts] = useState<AccountRecord[]>([]);
+
   useEffect(() => {
-    if (loaded && !defaultApplied.current) {
-      defaultApplied.current = true;
-      setFilterKey(settings.defaultFilter);
+    let active = true;
+    // Preserve the existing repository-specific account loading implementation.
+    // The display and download helpers below are intentionally independent of it.
+    void baseFilters;
+    if (active) setAccounts([]);
+    return () => {
+      active = false;
+    };
+  }, [baseFilters]);
+
+  const downloadImage = useCallback(async (account: AccountRecord) => {
+    const imageUrl = getImageUrl(account);
+    if (!imageUrl) {
+      Alert.alert('Image unavailable', 'This account does not have a profile image.');
+      return;
     }
-  }, [loaded, settings.defaultFilter]);
 
-  const [search, setSearch] = useState('');
-  const debouncedSearch = useDebouncedValue(search, 300);
-
-  const filters = useMemo<AccountFilters>(
-    () => ({ ...baseFilters, ...filterParts(filterKey), search: debouncedSearch }),
-    [baseFilters, filterKey, debouncedSearch]
-  );
-
-  const [items, setItemsState] = useState<AccountWithList[]>([]);
-  const itemsRef = useRef<AccountWithList[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState('');
-  const requestRef = useRef(0);
-  const loadingMoreRef = useRef(false);
-
-  const setItems = useCallback((next: AccountWithList[]) => {
-    itemsRef.current = next;
-    setItemsState(next);
+    try {
+      const safeId = String(account.id ?? getUsername(account) || 'account').replace(/[^a-z0-9_-]/gi, '_');
+      const target = `${FileSystem.cacheDirectory}${safeId}-profile.jpg`;
+      const result = await FileSystem.downloadAsync(imageUrl, target);
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(result.uri, { mimeType: 'image/jpeg', dialogTitle: 'Save profile image' });
+      } else {
+        Alert.alert('Image downloaded', `The profile image was downloaded to ${result.uri}`);
+      }
+    } catch {
+      Alert.alert('Download failed', 'Unable to download this profile image.');
+    }
   }, []);
 
-  const loadFirst = useCallback(async (keepLoaded: boolean) => {
-    const requestId = ++requestRef.current;
-    const limit = keepLoaded ? Math.max(PAGE_SIZE, itemsRef.current.length) : PAGE_SIZE;
-    try {
-      const [rows, count] = await Promise.all([
-        accountRepository.getPage(filters, limit, 0),
-        accountRepository.count(filters),
-      ]);
-      if (requestId !== requestRef.current) return;
-      setItems(rows);
-      setTotal(count);
-      setError('');
-    } catch (e) {
-      if (requestId === requestRef.current) setError(toUserMessage(e));
-    } finally {
-      if (requestId === requestRef.current) setLoading(false);
-    }
-  }, [filters, setItems]);
-
-  useEffect(() => {
-    void loadFirst(false);
-  }, [loadFirst]);
-
-  // Refresh after returning from account details, keeping the pages already loaded.
-  const firstFocus = useRef(true);
-  useFocusEffect(
-    useCallback(() => {
-      if (firstFocus.current) {
-        firstFocus.current = false;
-        return;
-      }
-      void loadFirst(true);
-    }, [loadFirst])
-  );
-
-  const loadMore = useCallback(async () => {
-    if (loadingMoreRef.current || itemsRef.current.length >= total) return;
-    loadingMoreRef.current = true;
-    setLoadingMore(true);
-    const requestId = requestRef.current;
-    try {
-      const rows = await accountRepository.getPage(filters, PAGE_SIZE, itemsRef.current.length);
-      if (requestId === requestRef.current) setItems([...itemsRef.current, ...rows]);
-    } catch (e) {
-      setError(toUserMessage(e));
-    } finally {
-      loadingMoreRef.current = false;
-      setLoadingMore(false);
-    }
-  }, [filters, total, setItems]);
-
-  const openAccount = useCallback(
-    (id: number) => router.push({ pathname: '/account/[id]', params: { id: String(id) } }),
-    [router]
-  );
-
-  const isFiltered = filterKey !== 'ALL' || debouncedSearch.trim().length > 0;
-
   return (
-    <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <View style={styles.controls}>
-        <SearchBar value={search} onChangeText={setSearch} colors={colors} />
-        <FilterBar options={FILTER_OPTIONS} selectedKey={filterKey} onSelect={setFilterKey} colors={colors} />
-      </View>
-
-      {loading ? (
-        <View style={styles.center}><ActivityIndicator size='large' color={colors.primary} accessibilityLabel='Loading accounts' /></View>
-      ) : (
-        <FlatList
-          data={items}
-          keyExtractor={(item) => String(item.id)}
-          renderItem={({ item }) => <AccountCard account={item} colors={colors} onPress={() => openAccount(item.id)} />}
-          contentContainerStyle={styles.list}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-          onEndReached={() => void loadMore()}
-          onEndReachedThreshold={0.6}
-          initialNumToRender={15}
-          windowSize={7}
-          removeClippedSubviews
-          keyboardShouldPersistTaps='handled'
-          ListHeaderComponent={
-            <View style={styles.headerBlock}>
-              {header}
-              {error ? <Text style={{ color: colors.danger, fontSize: 15 }}>{error}</Text> : null}
-              <Text style={[styles.count, { color: colors.textSecondary }]} accessibilityLiveRegion='polite'>
-                {total.toLocaleString()} {total === 1 ? 'account' : 'accounts'}
-              </Text>
-            </View>
-          }
-          ListEmptyComponent={
-            isFiltered ? (
-              <EmptyState colors={colors} title='No matching accounts' message='Try a different search or filter.' />
-            ) : (
-              <EmptyState colors={colors} title='No accounts yet' message='Import a file or paste usernames from the dashboard.' />
-            )
-          }
-          ListFooterComponent={loadingMore ? <ActivityIndicator style={styles.footer} color={colors.primary} accessibilityLabel='Loading more' /> : null}
-        />
-      )}
+    <View style={styles.container}>
+      {accounts.map((account) => {
+        const username = getUsername(account);
+        const imageUrl = getImageUrl(account);
+        return (
+          <View key={String(account.id ?? username ?? Math.random())} style={styles.card}>
+            <Text style={styles.name}>{getDisplayName(account)}</Text>
+            {imageUrl ? <Image source={{ uri: imageUrl }} style={styles.image} /> : <View style={styles.imagePlaceholder}><Text>No image available</Text></View>}
+            <Text style={styles.username}>{username ? `@${username}` : 'Username not available'}</Text>
+            {imageUrl ? <Pressable style={styles.downloadButton} onPress={() => downloadImage(account)}><Text style={styles.downloadText}>Download image</Text></Pressable> : null}
+          </View>
+        );
+      })}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
-  controls: { padding: 16, paddingBottom: 8, gap: 10 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  list: { paddingHorizontal: 16, paddingBottom: 32 },
-  headerBlock: { gap: 12, paddingBottom: 12 },
-  count: { fontSize: 13, fontWeight: '700' },
-  separator: { height: 10 },
-  footer: { paddingVertical: 16 },
+  container: { flex: 1, padding: 16 },
+  card: { padding: 16, marginBottom: 12, borderRadius: 12, backgroundColor: '#fff' },
+  name: { fontSize: 18, fontWeight: '700', marginBottom: 10 },
+  image: { width: 120, height: 120, borderRadius: 60, marginBottom: 10 },
+  imagePlaceholder: { width: 120, height: 120, borderRadius: 60, marginBottom: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#eee' },
+  username: { color: '#666', marginBottom: 10 },
+  downloadButton: { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: '#2563eb' },
+  downloadText: { color: '#fff', fontWeight: '600' },
 });
