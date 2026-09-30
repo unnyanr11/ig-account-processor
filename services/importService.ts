@@ -1,4 +1,4 @@
-import { parseFile, type ParsedRow, usernameFromRow } from './fileParser';
+import { parseFile, type ParsedRow } from './fileParser';
 
 export type ImportRecord = {
   username: string;
@@ -67,16 +67,59 @@ function usernamesFromValue(value: unknown): string[] {
 
 function usernameCandidatesFromRow(row: ParsedRow): string[] {
   const normalized = new Map<string, unknown>();
-  for (const [key, value] of Object.entries(row)) normalized.set(normalizeKey(key), value);
 
-  const candidates = USERNAME_KEYS.flatMap((key) => usernamesFromValue(normalized.get(key)));
-  if (candidates.length) return Array.from(new Set(candidates));
+  for (const [key, value] of Object.entries(row)) {
+    normalized.set(normalizeKey(key), value);
+  }
 
-  const fallback = Object.values(row).flatMap((value) => usernamesFromValue(value));
+  const candidates = USERNAME_KEYS.flatMap((key) =>
+    usernamesFromValue(normalized.get(key)),
+  );
+
+  if (candidates.length) {
+    return Array.from(new Set(candidates));
+  }
+
+  const fallback = Object.values(row).flatMap((value) =>
+    usernamesFromValue(value),
+  );
+
   return fallback.length ? fallback : [''];
 }
 
-export function parseImportFile(content: string, fileName: string): ParsedRow[] { return parseFile(content, fileName); }
+const IGNORED_INSTAGRAM_PATHS = new Set([
+  'explore',
+  'accounts',
+  'reels',
+  'p',
+  'stories',
+  'direct',
+]);
+
+function usernameFromRow(row: ParsedRow): string {
+  const candidates = usernameCandidatesFromRow(row);
+
+  for (const candidate of candidates) {
+    const username = normalizeUsername(candidate);
+
+    if (!username || IGNORED_INSTAGRAM_PATHS.has(username)) {
+      continue;
+    }
+
+    if (USERNAME_PATTERN.test(username)) {
+      return username;
+    }
+  }
+
+  return '';
+}
+
+export function parseImportFile(
+  content: string,
+  fileName: string,
+): ParsedRow[] {
+  return parseFile(content, fileName);
+}
 
 export async function analyzeImport(content: string, fileName: string, findExisting: (usernames: string[]) => Promise<Set<string>>): Promise<ImportAnalysis> {
   const rows = parseImportFile(content, fileName);
