@@ -1,4 +1,4 @@
-import { parseFile, type ParsedRow } from './fileParser.ts';
+import { parseFile, type ParsedRow, usernameFromRow } from './fileParser';
 
 export type ImportRecord = {
   username: string;
