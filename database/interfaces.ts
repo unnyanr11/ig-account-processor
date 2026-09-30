@@ -15,9 +15,18 @@ export interface NewAccountInput {
   username: string;
   instagram_url: string;
   display_name?: string | null;
+  full_name?: string | null;
   image_url?: string | null;
+  profile_image_uri?: string | null;
   source: string | null;
   list_id: number | null;
+}
+
+export interface AccountMetadataUpdate {
+  display_name?: string | null;
+  full_name?: string | null;
+  image_url?: string | null;
+  profile_image_uri?: string | null;
 }
 
 export interface StatusCounts {
@@ -34,6 +43,7 @@ export interface AccountRepository {
   findExistingUsernames(usernames: string[]): Promise<Set<string>>;
   getIdsByUsernames(usernames: string[]): Promise<number[]>;
   insertMany(inputs: NewAccountInput[], onProgress?: (done: number, total: number) => void): Promise<Map<string, number>>;
+  updateMetadata(id: number, metadata: AccountMetadataUpdate): Promise<void>;
   setStatus(id: number, status: AccountStatus): Promise<AccountStatus>;
   setNotes(id: number, notes: string): Promise<void>;
   moveToList(id: number, listId: number | null): Promise<void>;

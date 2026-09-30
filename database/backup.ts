@@ -55,11 +55,15 @@ export function replaceAll(data: BackupData): Promise<void> {
 
       for (const account of data.accounts) {
         await db.runAsync(
-          'INSERT INTO accounts (id, username, instagram_url, status, list_id, source, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          'INSERT INTO accounts (id, username, instagram_url, display_name, full_name, image_url, profile_image_uri, status, list_id, source, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
           [
             account.id,
             account.username,
             account.instagram_url,
+            account.display_name,
+            account.full_name,
+            account.image_url,
+            account.profile_image_uri,
             account.status,
             account.list_id,
             account.source,

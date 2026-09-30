@@ -35,7 +35,7 @@ export default function ImportScreen() {
     if (!analysis) return;
     setImporting(true); setError('');
     try {
-      const inserted = await accountRepository.insertMany(analysis.validRecords.map((record) => ({ username: record.username, instagram_url: record.instagramUrl, display_name: record.displayName, image_url: record.imageUrl, source: fileName, list_id: null })));
+      const inserted = await accountRepository.insertMany(analysis.validRecords.map((record) => ({ username: record.username, instagram_url: record.instagramUrl, display_name: record.displayName, full_name: record.fullName, image_url: record.imageUrl, profile_image_uri: record.profileImageUri, source: fileName, list_id: null })));
       const ids = Array.from(inserted.values());
       const existingIds = await accountRepository.getIdsByUsernames(analysis.validRecords.map((record) => record.username));
       const batchId = await historyRepository.createImportBatch(fileName, { total: analysis.total, newRecords: analysis.newRecords, duplicates: analysis.duplicates, invalid: analysis.invalid });

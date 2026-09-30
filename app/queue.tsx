@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { accountRepository, type AccountFilters } from '../database';
 import { AccountStatus, AccountWithList, ACCOUNT_STATUSES, STATUS_COLORS, STATUS_LABELS, STATUS_SYMBOLS } from '../types/account';
 import { toUserMessage } from '../services/errors';
 import { openProfile } from '../services/instagram';
+import { fetchProfileMetadata } from '../services/profileImage';
 import type { QueueMode } from '../services/settingsService';
 import { ThemeColors } from '../utils/theme';
 import { useSettings } from '../utils/useSettings';
@@ -68,6 +69,7 @@ export default function QueueScreen() {
   const [undo, setUndo] = useState<UndoState | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const attemptedIdentityLoads = useRef(new Set<number>());
 
   useEffect(() => () => {
     if (undoTimer.current) clearTimeout(undoTimer.current);
@@ -211,6 +213,43 @@ const outcome = await openProfile(account.username, {
     if (!outcome.ok) Alert.alert('Could not open Instagram', outcome.message);
   };
 
+  const refreshIdentity = useCallback(async (force = false) => {
+    if (!account || busy) return;
+    const needsIdentity = !account.display_name && !account.full_name;
+    const needsImage = !account.profile_image_uri && !account.image_url;
+    if (!force && !needsIdentity && !needsImage) return;
+
+    setBusy(true);
+    try {
+      const metadata = await fetchProfileMetadata({
+        username: account.username,
+        displayName: account.display_name ?? account.full_name ?? '',
+        fullName: account.full_name ?? account.display_name ?? '',
+        profileImageUrl: account.image_url ?? '',
+        profileImageUri: account.profile_image_uri ?? '',
+      });
+      await accountRepository.updateMetadata(account.id, {
+        display_name: metadata.displayName ?? account.display_name ?? account.full_name ?? null,
+        full_name: metadata.fullName ?? metadata.displayName ?? account.full_name ?? account.display_name ?? null,
+        image_url: metadata.imageUrl ?? account.image_url ?? null,
+        profile_image_uri: metadata.profileImageUri ?? account.profile_image_uri ?? null,
+      });
+      await show(account.id);
+    } catch {
+      setNotice('Profile details could not be refreshed right now.');
+    } finally {
+      setBusy(false);
+    }
+  }, [account, busy, show]);
+
+  useEffect(() => {
+    if (!account || phase !== 'ready') return;
+    if (attemptedIdentityLoads.current.has(account.id)) return;
+    if ((account.display_name || account.full_name) && (account.profile_image_uri || account.image_url)) return;
+    attemptedIdentityLoads.current.add(account.id);
+    void refreshIdentity(false);
+  }, [account, phase, refreshIdentity]);
+
   const message = (text: string, actionLabel?: string, action?: () => void) => (
     <View style={styles.center}>
       <Text style={[styles.centerText, { color: colors.text }]}>{text}</Text>
@@ -251,13 +290,29 @@ const outcome = await openProfile(account.username, {
         ) : null}
 
         <View style={styles.accountBlock}>
-          <Text style={[styles.username, { color: colors.text }]} accessibilityRole='header' selectable>@{account.username}</Text>
+          {(account.profile_image_uri || account.image_url) ? (
+            <Image source={{ uri: account.profile_image_uri || account.image_url || undefined }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
+              <Text style={[styles.avatarPlaceholderText, { color: colors.textMuted }]}>{(account.username[0] || '?').toUpperCase()}</Text>
+            </View>
+          )}
+          <Text style={[styles.displayName, { color: colors.text }]} accessibilityRole='header' numberOfLines={2}>
+            {account.display_name || account.full_name || 'Instagram account'}
+          </Text>
+          <Text style={[styles.username, { color: colors.textSecondary }]} selectable>@{account.username}</Text>
           <View style={[styles.badge, { borderColor: statusColor }]} accessible accessibilityLabel={`Current status ${STATUS_LABELS[account.status]}`}>
             <Text style={[styles.badgeText, { color: statusColor }]}>{STATUS_SYMBOLS[account.status]} {STATUS_LABELS[account.status].toUpperCase()}</Text>
           </View>
           {account.list_name ? <Text style={[styles.meta, { color: colors.textMuted }]}>List: {account.list_name}</Text> : null}
           {account.notes ? <Text style={[styles.meta, { color: colors.textSecondary }]} numberOfLines={2}>{account.notes}</Text> : null}
         </View>
+
+        {(!(account.display_name || account.full_name) || !(account.profile_image_uri || account.image_url)) ? (
+          <Pressable onPress={() => void refreshIdentity(true)} accessibilityRole='button' style={[styles.secondaryAction, { backgroundColor: colors.surfaceAlt }]}>
+            <Text style={[styles.secondaryActionText, { color: colors.text }]}>Refresh profile info</Text>
+          </Pressable>
+        ) : null}
 
         <Pressable onPress={handleOpen} accessibilityRole='button' accessibilityLabel={`Open ${account.username} on Instagram`} style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}>
           <Text style={styles.primaryText}>Open Instagram</Text>
@@ -320,12 +375,18 @@ const styles = StyleSheet.create({
   chip: { borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, minHeight: 40, alignItems: 'center', justifyContent: 'center' },
   chipText: { fontSize: 13, fontWeight: '700' },
   accountBlock: { alignItems: 'center', gap: 8, paddingVertical: 8 },
-  username: { fontSize: 32, fontWeight: '800', textAlign: 'center' },
+  avatar: { width: 92, height: 92, borderRadius: 46 },
+  avatarPlaceholder: { borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  avatarPlaceholderText: { fontSize: 28, fontWeight: '800' },
+  displayName: { fontSize: 26, fontWeight: '800', textAlign: 'center' },
+  username: { fontSize: 20, fontWeight: '700', textAlign: 'center' },
   badge: { borderWidth: 2, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 4 },
   badgeText: { fontSize: 13, fontWeight: '800' },
   meta: { fontSize: 13, textAlign: 'center' },
   primary: { minHeight: 64, borderRadius: 16, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   primaryText: { color: '#FFFFFF', fontSize: 18, fontWeight: '800' },
+  secondaryAction: { minHeight: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
+  secondaryActionText: { fontSize: 15, fontWeight: '700' },
   section: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },
   statusList: { gap: 10 },
   notice: { fontSize: 13, textAlign: 'center' },
