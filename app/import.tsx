@@ -8,7 +8,7 @@ import { parseImportFile } from '../services/importService';
 export default function ImportScreen() {
   const pickFile = async () => {
     const result = await DocumentPicker.getDocumentAsync({
-      type: ['application/json', 'text/json', 'text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+      type: ['*/*', 'text/csv', 'text/comma-separated-values', 'application/csv', 'application/json', 'text/json', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
       copyToCacheDirectory: true,
       multiple: false,
     });
