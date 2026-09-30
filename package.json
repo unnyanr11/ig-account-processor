@@ -5,7 +5,8 @@
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-specifier-resolution=node --test tests/**/*.test.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",

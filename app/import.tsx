@@ -7,6 +7,15 @@ import { accountRepository, historyRepository } from '../database';
 import { analyzeImport, type ImportAnalysis } from '../services/importService';
 import { AccountStatus } from '../types/account';
 
+const IMPORT_FILE_TYPES = [
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel',
+  'text/csv',
+  'application/csv',
+  'application/json',
+  'text/plain',
+];
+
 export default function ImportScreen() {
   const router = useRouter();
   const [analysis, setAnalysis] = useState<ImportAnalysis | null>(null);
@@ -20,7 +29,7 @@ export default function ImportScreen() {
   const chooseFile = async () => {
     setError(''); setLoading(true);
     try {
-      const result = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true, multiple: false });
+      const result = await DocumentPicker.getDocumentAsync({ type: IMPORT_FILE_TYPES, copyToCacheDirectory: true, multiple: false });
       if (result.canceled) return;
       const file = result.assets[0];
       const content = await FileSystem.readAsStringAsync(file.uri);

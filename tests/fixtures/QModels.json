@@ -1,0 +1,10 @@
+{
+  "data": [
+    { "username": "@alpha" },
+    { "handle": "beta" },
+    { "user": "https://instagram.com/gamma/" },
+    { "profile url": "https://www.instagram.com/delta/?hl=en" },
+    { "usernames": ["epsilon", "@zeta"] },
+    { "username": "invalid username" }
+  ]
+}

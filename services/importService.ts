@@ -1,4 +1,4 @@
-import { parseFile, type ParsedRow } from './fileParser';
+import { parseFile, type ParsedRow } from './fileParser.ts';
 
 export type ImportRecord = {
   username: string;
@@ -26,13 +26,54 @@ export type ImportSummary = {
   total: number;
 };
 
-const text = (value: unknown): string => typeof value === 'string' ? value.trim() : '';
+const text = (value: unknown): string => typeof value === 'string' ? value.trim() : typeof value === 'number' ? String(value).trim() : '';
 const first = (row: ParsedRow, keys: string[]): string => { for (const key of keys) { const value = text(row[key]); if (value) return value; } return ''; };
+const USERNAME_PATTERN = /^[a-z0-9._]{1,30}$/;
+const USERNAME_KEYS = ['username', 'usernames', 'handle', 'screenname', 'user', 'instagram', 'url', 'link', 'profile', 'profileurl', 'instagramurl'];
 
-function usernameFromRow(row: ParsedRow): string {
-  const value = first(row, ['username', 'userName', 'user_name', 'handle', 'screen_name', 'instagram', 'profile', 'url', 'link']);
-  const match = value.match(/instagram\.com\/([A-Za-z0-9._]+)/i);
-  return (match ? match[1] : value).replace(/^@/, '').replace(/\/$/, '').trim().toLowerCase();
+function normalizeKey(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function normalizeUsername(candidate: string): string {
+  let value = candidate.trim();
+  if (!value) return '';
+  const instagramMatch = value.match(/(?:https?:\/\/)?(?:www\.)?instagram\.com\/([A-Za-z0-9._]{1,30})/i);
+  if (instagramMatch?.[1]) value = instagramMatch[1];
+  value = value.replace(/^@+/, '').replace(/[/?#].*$/, '').replace(/\/+$/, '').trim();
+  return value.toLowerCase();
+}
+
+function usernamesFromText(value: string): string[] {
+  const content = value.trim();
+  if (!content) return [];
+  const instagramMatches = [...content.matchAll(/(?:https?:\/\/)?(?:www\.)?instagram\.com\/([A-Za-z0-9._]{1,30})/gi)].map((match) => normalizeUsername(match[1]));
+  if (instagramMatches.length) return instagramMatches.filter(Boolean);
+
+  const atMatches = [...content.matchAll(/@([A-Za-z0-9._]{1,30})/g)].map((match) => normalizeUsername(match[1]));
+  if (atMatches.length) return atMatches.filter(Boolean);
+
+  return content
+    .split(/[,\n;\t]+/)
+    .map((item) => normalizeUsername(item))
+    .filter(Boolean);
+}
+
+function usernamesFromValue(value: unknown): string[] {
+  if (Array.isArray(value)) return value.flatMap((item) => usernamesFromValue(item));
+  const raw = text(value);
+  return raw ? usernamesFromText(raw) : [];
+}
+
+function usernameCandidatesFromRow(row: ParsedRow): string[] {
+  const normalized = new Map<string, unknown>();
+  for (const [key, value] of Object.entries(row)) normalized.set(normalizeKey(key), value);
+
+  const candidates = USERNAME_KEYS.flatMap((key) => usernamesFromValue(normalized.get(key)));
+  if (candidates.length) return Array.from(new Set(candidates));
+
+  const fallback = Object.values(row).flatMap((value) => usernamesFromValue(value));
+  return fallback.length ? fallback : [''];
 }
 
 export function parseImportFile(content: string, fileName: string): ParsedRow[] { return parseFile(content, fileName); }
@@ -47,12 +88,18 @@ export async function analyzeImport(content: string, fileName: string, findExist
     const profileImageUri = first(row, ['profileImageUri', 'profile_image_uri']) || null;
     return { username, displayName, fullName, imageUrl, profileImageUri, instagramUrl: username ? `https://instagram.com/${username}` : '', raw: row };
   });
-  const validRecords = records.filter((record) => /^[a-z0-9._]{1,30}$/.test(record.username));
+  const validRecords = records.filter((record) => USERNAME_PATTERN.test(record.username));
   const invalid = records.length - validRecords.length;
   const seen = new Set<string>();
   let duplicates = 0;
-  for (const record of validRecords) { if (seen.has(record.username)) duplicates += 1; else seen.add(record.username); }
-  const unique = validRecords.filter((record, index) => validRecords.findIndex((item) => item.username === record.username) === index);
+  const unique: ImportRecord[] = [];
+  for (const record of validRecords) {
+    if (seen.has(record.username)) duplicates += 1;
+    else {
+      seen.add(record.username);
+      unique.push(record);
+    }
+  }
   const existing = await findExisting(unique.map((record) => record.username));
   return { records, validRecords: unique, total: records.length, newRecords: unique.filter((record) => !existing.has(record.username)).length, existingRecords: existing.size, duplicates, invalid };
 }

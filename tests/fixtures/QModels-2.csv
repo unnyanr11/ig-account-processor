@@ -1,0 +1,7 @@
+﻿username,full_name,link,notes
+"@alpha","Alpha Name","https://instagram.com/alpha/","note, with comma"
+,,"https://www.instagram.com/beta/?hl=en",""
+"gamma",,,
+"invalid username",,,
+"@alpha",,,
+
