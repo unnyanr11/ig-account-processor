@@ -25,7 +25,16 @@ function safeText(value: string | null): string {
 }
 
 function toRow(a: AccountWithList): string[] {
-  return [a.username, a.instagram_url, a.status, safeText(a.list_name), safeText(a.source), safeText(a.notes), a.created_at, a.updated_at];
+  return [
+  a.username ?? '',
+  a.instagram_url,
+  a.status,
+  safeText(a.list_name),
+  safeText(a.source),
+  safeText(a.notes),
+  a.created_at,
+  a.updated_at,
+];
 }
 
 function csvCell(value: string): string {

@@ -93,7 +93,15 @@ export default function AccountDetailsScreen() {
 
   const openInstagram = async () => {
     if (!account) return;
-    const outcome = await openProfile(account.username, {
+    if (!account.username?.trim()) {
+  Alert.alert(
+    'Username unavailable',
+    'This account does not have a username to open.'
+  );
+  return;
+}
+
+const outcome = await openProfile(account.username, {
       preferApp: settings.preferInstagramApp,
       browserFallback: settings.browserFallback,
     });
