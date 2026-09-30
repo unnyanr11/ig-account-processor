@@ -6,6 +6,7 @@ import type { AccountFilters } from '../database';
 
 export type AccountBrowserProps = {
   baseFilters?: AccountFilters;
+  header?: React.ReactNode;
 };
 
 type AccountRecord = {
@@ -26,13 +27,14 @@ const getUsername = (account: AccountRecord) => account.username?.trim() || '';
 const getImageUrl = (account: AccountRecord) =>
   account.profilePictureUrl || account.profileImageUrl || account.imageUrl || '';
 
-export default function AccountBrowser({ baseFilters = {} }: AccountBrowserProps) {
+export default function AccountBrowser({
+  baseFilters = {},
+  header,
+}: AccountBrowserProps) {
   const [accounts, setAccounts] = useState<AccountRecord[]>([]);
 
   useEffect(() => {
     let active = true;
-    // Preserve the existing repository-specific account loading implementation.
-    // The display and download helpers below are intentionally independent of it.
     void baseFilters;
     if (active) setAccounts([]);
     return () => {
@@ -48,11 +50,16 @@ export default function AccountBrowser({ baseFilters = {} }: AccountBrowserProps
     }
 
     try {
-      const safeId = String(account.id ?? getUsername(account) || 'account').replace(/[^a-z0-9_-]/gi, '_');
+      const safeId = String(
+        (account.id ?? getUsername(account)) || 'account'
+      ).replace(/[^a-z0-9_-]/gi, '_');
       const target = `${FileSystem.cacheDirectory}${safeId}-profile.jpg`;
       const result = await FileSystem.downloadAsync(imageUrl, target);
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(result.uri, { mimeType: 'image/jpeg', dialogTitle: 'Save profile image' });
+        await Sharing.shareAsync(result.uri, {
+          mimeType: 'image/jpeg',
+          dialogTitle: 'Save profile image',
+        });
       } else {
         Alert.alert('Image downloaded', `The profile image was downloaded to ${result.uri}`);
       }
@@ -63,15 +70,28 @@ export default function AccountBrowser({ baseFilters = {} }: AccountBrowserProps
 
   return (
     <View style={styles.container}>
+      {header}
       {accounts.map((account) => {
         const username = getUsername(account);
         const imageUrl = getImageUrl(account);
         return (
           <View key={String(account.id ?? username ?? Math.random())} style={styles.card}>
             <Text style={styles.name}>{getDisplayName(account)}</Text>
-            {imageUrl ? <Image source={{ uri: imageUrl }} style={styles.image} /> : <View style={styles.imagePlaceholder}><Text>No image available</Text></View>}
-            <Text style={styles.username}>{username ? `@${username}` : 'Username not available'}</Text>
-            {imageUrl ? <Pressable style={styles.downloadButton} onPress={() => downloadImage(account)}><Text style={styles.downloadText}>Download image</Text></Pressable> : null}
+            {imageUrl ? (
+              <Image source={{ uri: imageUrl }} style={styles.image} />
+            ) : (
+              <View style={styles.imagePlaceholder}>
+                <Text>No image available</Text>
+              </View>
+            )}
+            <Text style={styles.username}>
+              {username ? `@${username}` : 'Username not available'}
+            </Text>
+            {imageUrl ? (
+              <Pressable style={styles.downloadButton} onPress={() => downloadImage(account)}>
+                <Text style={styles.downloadText}>Download image</Text>
+              </Pressable>
+            ) : null}
           </View>
         );
       })}
@@ -84,8 +104,22 @@ const styles = StyleSheet.create({
   card: { padding: 16, marginBottom: 12, borderRadius: 12, backgroundColor: '#fff' },
   name: { fontSize: 18, fontWeight: '700', marginBottom: 10 },
   image: { width: 120, height: 120, borderRadius: 60, marginBottom: 10 },
-  imagePlaceholder: { width: 120, height: 120, borderRadius: 60, marginBottom: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#eee' },
+  imagePlaceholder: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    marginBottom: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#eee',
+  },
   username: { color: '#666', marginBottom: 10 },
-  downloadButton: { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: '#2563eb' },
+  downloadButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#2563eb',
+  },
   downloadText: { color: '#fff', fontWeight: '600' },
 });
