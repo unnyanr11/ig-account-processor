@@ -14,7 +14,7 @@ Production-oriented Android app built with Expo, React Native, TypeScript, Expo 
 
 Supported: JSON, JSONL, NDJSON, CSV, TSV, XLSX, XLS, TXT, XML and HTML.
 
-The importer detects common JSON object-wrapped arrays (models, accounts, users, profiles, data, items, results, records, rows), flexible CSV headers, headerless delimited data, UTF-8 BOM, CRLF/LF, quoted cells and embedded commas.
+The importer detects common JSON object-wrapped arrays (models, accounts, users, profiles, data, items, results, records, rows) and Instagram Followers/Following exports by content rather than filename. Instagram exports using `string_list_data`, `relationships_following`, `relationships_followers`, `followers_1.json`-style files, and Instagram profile links are normalized into the same account records. It also handles flexible CSV headers, headerless delimited data, UTF-8 BOM, CRLF/LF, quoted cells and embedded commas.
 
 Known mappings include model name, letter, Instagram username/link, X username/link, TikTok username/link, Babepedia source and profile image fields with common naming variants. Unknown fields remain in the original row.
 
@@ -68,7 +68,7 @@ The app uses the Android system document picker and does not require broad stora
 
 ## Validation
 
-Tests cover filename independence, JSON/CSV schema recognition, quoted CSV/BOM/CRLF, missing Instagram values, JSONL/NDJSON/TSV, misleading extensions, malformed input, and duplicate/normalization behavior.
+Tests cover filename independence, QModels-style JSON/CSV, Instagram follower/following JSON and HTML exports, quoted CSV/BOM/CRLF, missing Instagram values, JSONL/NDJSON/TSV, misleading extensions, malformed input, and duplicate/normalization behavior.
 
 Before release, test on-device with 1,000 / 10,000 / 25,000 / 50,000-record datasets, image downloads, backup/restore, hard reset, dark/light/system themes, screen readers, and Instagram installed/uninstalled browser fallback.
 
