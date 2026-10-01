@@ -120,16 +120,21 @@ export async function saveImageToDeviceStorage(
   const source = existingLocalPath || (remoteUrl ? await downloadImage(accountId, remoteUrl) : null);
   if (!source) return null;
 
-  const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync(
-    FileSystem.StorageAccessFramework.getUriForDirectoryInRoot('Download'),
-  );
-  if (!permissions.granted) return null;
+  let directoryUri = getSettingsSnapshot().imageSaveDirectoryUri;
+  if (!directoryUri) {
+    const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync(
+      FileSystem.StorageAccessFramework.getUriForDirectoryInRoot('Download'),
+    );
+    if (!permissions.granted) return null;
+    directoryUri = permissions.directoryUri;
+    await updateSetting('imageSaveDirectoryUri', directoryUri);
+  }
 
   const ext = (remoteUrl?.match(/\.(jpe?g|png|webp|gif)(?:[?#]|$)/i)?.[1] || 'jpg').toLowerCase();
   const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : ext === 'gif' ? 'image/gif' : 'image/jpeg';
   const fileName = `Instagram_${accountId}_${Date.now()}.${ext}`;
   const target = await FileSystem.StorageAccessFramework.createFileAsync(
-    permissions.directoryUri,
+    directoryUri,
     fileName,
     mime,
   );
