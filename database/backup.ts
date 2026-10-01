@@ -71,7 +71,8 @@ export function replaceAll(data: BackupData): Promise<void> {
         if (!keys.length) continue;
         const placeholders = keys.map(() => '?').join(',');
         const sql = `INSERT INTO ${table}(${keys.join(',')}) VALUES(${placeholders})`;
-        await db.runAsync(sql, keys.map((key) => row[key]));
+        const values = keys.map((key) => row[key] as string | number | null | Uint8Array);
+        await db.runAsync(sql, values);
       }
     }
   }));
