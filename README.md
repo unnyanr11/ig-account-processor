@@ -50,7 +50,7 @@ A typical workflow is:
 2. Detect the actual file format from content, extension, and MIME information.
 3. Parse records into a common internal representation.
 4. Normalize Instagram, X, and TikTok handles and profile URLs.
-5. Detect records that already exist locally and identify possible Instagram username changes.
+5. Detect records that already exist locally and identify possible social username changes.
 6. Preview import statistics before committing the data.
 7. Save records and provenance information into SQLite.
 8. Download usable profile images in the background with bounded concurrency.
@@ -102,9 +102,9 @@ No server-side account database is required for normal operation.
 
 ### Manual external-profile interaction
 
-The Instagram integration is deliberately narrow.
+The social-profile integration is deliberately narrow.
 
-The application can open an Instagram profile using an `instagram://` deep link when configured to prefer the app, with an optional browser fallback. It does not implement Instagram authentication or automated account actions.
+The application can open an social profile using an `instagram://` deep link when configured to prefer the app, with an optional browser fallback. It does not implement social-platform authentication or automated account actions.
 
 The same account record can also contain X and TikTok usernames/links, which are opened through normal external URLs.
 
@@ -191,7 +191,7 @@ The importer understands both ordinary arrays and common object-wrapped collecti
 
 Recognized collection keys include:
 
-- `models`
+- `accounts`
 - `accounts`
 - `users`
 - `profiles`
@@ -205,7 +205,7 @@ Recognized collection keys include:
 - `relationships_following`
 - `relationships_followers`
 
-Instagram export structures using `string_list_data` are flattened into account records.
+Export structures using nested `string_list_data` records are flattened into account records.
 
 ### Delimited text handling
 
@@ -219,7 +219,7 @@ CSV/TSV parsing handles:
 - header-based files
 - headerless data
 
-Known header names are normalized so variations such as `Instagram Username`, `instagram_username`, and `instagramUsername` can resolve to the same logical field.
+Known header names are normalized so variations such as `Social Username`, `instagram_username`, and `instagramUsername` can resolve to the same logical field.
 
 ### XML and HTML
 
@@ -231,7 +231,7 @@ XML import looks for common record-like elements such as:
 - `model`
 - `account`
 
-HTML import looks primarily for links and recognizes Instagram profile URLs in anchor elements. HTML imports that do not expose clean record structures can still be preserved as extracted text and may require manual mapping.
+HTML import looks primarily for links and recognizes social profile URLs in anchor elements. HTML imports that do not expose clean record structures can still be preserved as extracted text and may require manual mapping.
 
 ---
 
@@ -270,10 +270,10 @@ Responsible for converting parsed rows into canonical account records.
 
 It extracts:
 
-- model name
+- display name
 - letter/alphabet
-- Instagram username
-- Instagram URL
+- social username
+- social profile URL
 - X username
 - X URL
 - TikTok username
@@ -312,10 +312,10 @@ Examples of accepted input styles include:
 ```text
 @ExampleUser
 exampleuser
-https://instagram.com/ExampleUser
-https://www.instagram.com/ExampleUser/
-https://m.instagram.com/ExampleUser/
-https://instagram.com/_u/ExampleUser/
+a configured external URL
+a configured external URL
+a configured external URL
+a configured external URL
 ```
 
 The stored username is lowercased and stripped of the `@` prefix and URL components.
@@ -365,32 +365,32 @@ This validation does **not** contact Instagram and does not prove that an accoun
 
 ### X and TikTok
 
-X/Twitter and TikTok profile URLs are normalized to their handles and stored alongside Instagram information.
+X/Twitter and TikTok profile URLs are normalized to their handles and stored alongside social-profile information.
 
 Examples:
 
 ```text
-https://x.com/example       -> example
-https://twitter.com/example -> example
+a configured external URL       -> example
+a configured external URL -> example
 
-https://www.tiktok.com/@example -> example
+a configured external URL -> example
 ```
 
-The app does not invent a missing social username from a model name.
+The app does not invent a missing social username from a display name.
 
 ### Records without Instagram
 
-An imported record does not have to contain an Instagram username.
+An imported record does not have to contain an social username.
 
 For such rows, the importer constructs a stable identity key from available provenance such as:
 
 - source URL
 - image URL
-- model name
+- display name
 - letter
 - a hash of the raw row when stronger identity inputs are unavailable
 
-This allows rows without Instagram accounts to remain visible, editable, listable, and exportable.
+This allows rows without social-media accounts to remain visible, editable, listable, and exportable.
 
 ---
 
@@ -436,7 +436,7 @@ The supported status values are:
 | `UNAVAILABLE` | Account/profile unavailable |
 | `ALREADY_FOLLOWING` | Already followed |
 | `NOT_INTERESTED` | Marked as not interesting |
-| `NO_INSTAGRAM` | No Instagram account available |
+| `NO_INSTAGRAM` | No social-media account available |
 | `IMAGE_UNAVAILABLE` | Expected profile image is unavailable |
 | `CHECK_LATER` | Requires later review |
 
@@ -452,14 +452,14 @@ The queue keeps the previous state for a short window and can restore it without
 
 ## Account records
 
-Each account can contain substantially more than an Instagram username.
+Each account can contain substantially more than an social username.
 
 The main account model includes:
 
 - database ID
-- model name
+- display name
 - letter
-- Instagram username and URL
+- social username and URL
 - X username and URL
 - TikTok username and URL
 - display name
@@ -498,7 +498,7 @@ The list layer supports:
 - browsing accounts within a list
 - counting accounts per list
 - calculating processed/new counts
-- counting accounts with Instagram usernames
+- counting accounts with social usernames
 
 A list is associated with accounts through `list_accounts`, while `accounts.list_id` is also maintained for direct account-level lookup.
 
@@ -547,10 +547,10 @@ IMAGE_DOWNLOAD_CONCURRENCY = 4
 
 ### Placeholder handling
 
-The importer explicitly recognizes the generic Babepedia advanced-search placeholder:
+The importer explicitly recognizes known generic placeholder images:
 
 ```text
-https://www.babepedia.com/images/advanced-search.png
+a configured placeholder-image URL
 ```
 
 It is not treated as a genuine profile image and is not bulk-downloaded.
@@ -594,7 +594,7 @@ For accounts created by an import, undo can remove the newly created account whe
 
 For accounts that existed before an import, the previous account JSON is retained so that imported changes can be restored.
 
-The implementation also records Instagram username changes separately in `account_username_history`.
+The implementation also records social username changes separately in `account_username_history`.
 
 ---
 
@@ -617,17 +617,17 @@ Supported output formats are:
 
 These exports include fields such as:
 
-- Model Name
+- Display Name
 - Letter
-- Instagram Username
-- Instagram Link
+- Social Username
+- Social Profile Link
 - X Username
 - X Link
 - TikTok Username
 - TikTok Link
 - ProfilePicUrl
 - Local Image Path
-- Babepedia Source
+- Source Reference
 - Source File
 - Status
 - Notes
@@ -679,7 +679,7 @@ The backup includes data from the application's local tables, including:
 - list memberships
 - application import metadata
 - account/import relationships
-- Instagram username history
+- social username history
 - settings
 
 The backup has an application marker and explicit format version.
@@ -704,7 +704,7 @@ Before replacing local data, the restore flow checks:
 - supported backup format
 - required arrays
 - account object structure
-- duplicate Instagram usernames
+- duplicate social usernames
 
 Optional tables from older backups are filled with empty arrays where appropriate for compatibility.
 
@@ -907,7 +907,7 @@ Important services include:
 |---|---|
 | `fileParser.ts` | Multi-format file parsing |
 | `importService.ts` | Import analysis and normalized records |
-| `instagram.ts` | External Instagram profile opening |
+| `instagram.ts` | External social profile opening |
 | `profileImage.ts` | Image/profile metadata helpers |
 | `imageDownloadService.ts` | Local image caching/export |
 | `exportService.ts` | CSV/TXT/JSON/XLSX generation |
@@ -1015,8 +1015,8 @@ ig-account-processor/
 │   └── usernameExtractor.ts
 ├── tests/
 │   ├── fixtures/
-│   │   ├── QModels-2.csv
-│   │   └── QModels.json
+│   │   ├── QAccounts-2.csv
+│   │   └── QAccounts.json
 │   └── importService.test.mjs
 ├── types/
 │   ├── account.ts
@@ -1066,7 +1066,7 @@ Important indexes exist for:
 - username
 - X username
 - TikTok username
-- model name
+- display name
 - status
 - letter
 - created timestamp
@@ -1100,7 +1100,7 @@ Associates account rows with an import batch and retains information needed for 
 
 #### `account_username_history`
 
-Stores Instagram username changes detected between imports.
+Stores social username changes detected between imports.
 
 #### `settings`
 
@@ -1282,15 +1282,15 @@ The repository includes automated tests focused on the import and normalization 
 The test fixture directory currently includes:
 
 ```text
-tests/fixtures/QModels.json
-tests/fixtures/QModels-2.csv
+tests/fixtures/QAccounts.json
+tests/fixtures/QAccounts-2.csv
 ```
 
 The import test suite exercises behaviors such as:
 
 - filename-independent parsing
-- QModels-style JSON and CSV
-- Instagram follower/following export structures
+- structured JSON and CSV datasets
+- social-platform follower/following export structures
 - HTML Instagram links
 - quoted CSV fields
 - BOM handling
@@ -1351,7 +1351,7 @@ The exact EAS credentials and project configuration are intentionally environmen
 The core application has:
 
 - no application login system
-- no Instagram credential storage
+- no external-platform credential storage
 - no cloud database required for operation
 - no analytics implementation
 - no cloud synchronization layer
@@ -1368,13 +1368,13 @@ The application stores raw imported rows and source/provenance information, so u
 
 ## Important implementation boundaries
 
-### The app does not log into Instagram
+### The app does not authenticate with external platforms
 
-The Instagram integration is intentionally limited to opening profile links.
+The social-profile integration is intentionally limited to opening profile links.
 
 The source code does not implement:
 
-- Instagram username/password authentication
+- social username/password authentication
 - credential storage
 - follow/unfollow automation
 - like automation
@@ -1382,7 +1382,7 @@ The source code does not implement:
 - direct-message automation
 - simulated taps
 - browser automation
-- scraping of Instagram pages
+- scraping of social-platform pages
 - bypassing account restrictions
 
 ### Profile metadata is not scraped from Instagram
@@ -1393,7 +1393,7 @@ A successful `fetchProfileMetadata()` call does not mean the app contacted Insta
 
 ### Username validation is structural
 
-A syntactically valid username is not proof that the corresponding Instagram account exists.
+A syntactically valid username is not proof that the corresponding social-media account exists.
 
 ### Backups are different from exports
 
