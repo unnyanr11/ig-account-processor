@@ -43,11 +43,23 @@ export function getIdsByUsernames(usernames: string[]): Promise<number[]> { retu
           [c.source_url.trim()]
         );
       }
-      if (!row && c.model_name?.trim() && c.letter?.trim()) {
-        const candidatesByName = await db.getAllAsync<{id:number;username:string}>(
-          'SELECT id, username FROM accounts WHERE lower(trim(model_name)) = lower(trim(?)) AND lower(trim(letter)) = lower(trim(?))',
-          [c.model_name.trim(), c.letter.trim()]
+      if (!row && c.profile_image_url?.trim()) {
+        const imageMatches = await db.getAllAsync<{id:number;username:string}>(
+          'SELECT id, username FROM accounts WHERE lower(trim(profile_image_url)) = lower(trim(?)) OR lower(trim(image_url)) = lower(trim(?))',
+          [c.profile_image_url.trim(), c.profile_image_url.trim()]
         );
+        if (imageMatches.length === 1) row = imageMatches[0];
+      }
+      if (!row && c.model_name?.trim()) {
+        const candidatesByName = c.letter?.trim()
+          ? await db.getAllAsync<{id:number;username:string}>(
+              'SELECT id, username FROM accounts WHERE lower(trim(model_name)) = lower(trim(?)) AND lower(trim(letter)) = lower(trim(?))',
+              [c.model_name.trim(), c.letter.trim()]
+            )
+          : await db.getAllAsync<{id:number;username:string}>(
+              'SELECT id, username FROM accounts WHERE lower(trim(model_name)) = lower(trim(?))',
+              [c.model_name.trim()]
+            );
         if (candidatesByName.length === 1) row = candidatesByName[0];
       }
       if (row && row.username !== c.username && !seenAccounts.has(row.id)) {
