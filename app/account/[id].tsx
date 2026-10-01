@@ -27,6 +27,7 @@ export default function AccountDetailsScreen() {
   const [phase, setPhase] = useState<Phase>('loading');
   const [account, setAccount] = useState<AccountWithList | null>(null);
   const [history, setHistory] = useState<StatusHistoryEntry[]>([]);
+  const [usernameHistory, setUsernameHistory] = useState<Array<{id:number;old_username:string;new_username:string;changed_at:string}>>([]);
   const [lists, setLists] = useState<List[]>([]);
   const [notes, setNotes] = useState('');
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -39,9 +40,10 @@ export default function AccountDetailsScreen() {
       return;
     }
     try {
-      const [found, entries, allLists] = await Promise.all([
+      const [found, entries, usernameEntries, allLists] = await Promise.all([
         accountRepository.getById(accountId),
         historyRepository.getForAccount(accountId),
+        historyRepository.getUsernameHistory(accountId),
         listRepository.getAll(),
       ]);
       if (!found) {
@@ -50,6 +52,7 @@ export default function AccountDetailsScreen() {
       }
       setAccount(found);
       setHistory(entries);
+      setUsernameHistory(usernameEntries);
       setLists(allLists);
       if (resetNotes) setNotes(found.notes ?? '');
       setPhase('ready');
@@ -256,6 +259,16 @@ const outcome = await openProfile(account.username, {
       >
         <Text style={styles.primaryText}>Save Notes</Text>
       </Pressable>
+
+      {usernameHistory.length ? <>
+        <Text style={[styles.section, { color: colors.textSecondary }]}>Username Changes</Text>
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          {usernameHistory.map((entry) => <View key={entry.id} style={styles.historyRow} accessible accessibilityLabel={`Username changed from @${entry.old_username} to @${entry.new_username}`}>
+            <Text style={[styles.historyDate, { color: colors.textMuted }]}>{formatDateTimeHuman(entry.changed_at)}</Text>
+            <Text style={[styles.historyChange, { color: colors.text }]} selectable>@{entry.old_username} {'→'} @{entry.new_username}</Text>
+          </View>)}
+        </View>
+      </> : null}
 
       <Text style={[styles.section, { color: colors.textSecondary }]}>History</Text>
       <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
