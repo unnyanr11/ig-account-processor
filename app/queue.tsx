@@ -352,6 +352,12 @@ export default function QueueScreen() {
           <Text style={styles.primaryText}>Open Instagram</Text>
         </Pressable>
 
+        {account.source_url ? (
+          <Pressable onPress={async () => { try { await Linking.openURL(account.source_url!); } catch { Alert.alert('Could not open source', 'The source link could not be opened.'); } }} accessibilityRole='link' accessibilityLabel='Open source link' style={[styles.secondaryAction, { backgroundColor: colors.surfaceAlt }]}>
+            <Text style={[styles.secondaryActionText, { color: colors.primary }]} numberOfLines={2}>Source: {account.source_url}</Text>
+          </Pressable>
+        ) : null}
+
         <Text style={[styles.section, { color: colors.textSecondary }]}>Account status</Text>
         <View style={styles.statusList}>
           {ACCOUNT_STATUSES.filter((s) => s !== AccountStatus.NEW).map((s) => (
