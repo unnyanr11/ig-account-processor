@@ -3,6 +3,8 @@ import type { ImportBatch, StatusHistoryEntry } from '../types/history';
 import type { List, ListWithStats } from '../types/list';
 
 export interface AccountFilters { status?: AccountStatus; listId?: number | null; importBatchId?: number; importId?: number; search?: string; importedToday?: boolean; updatedToday?: boolean; neverProcessed?: boolean; }
+export interface UsernameChangeCandidate { username:string; model_name?:string|null; letter?:string|null; source_url?:string|null; profile_image_url?:string|null; }
+export interface UsernameChangeMatch { account_id:number; old_username:string; new_username:string; }
 export interface NewAccountInput {
   username: string;
   instagram_url: string | null;
@@ -35,6 +37,8 @@ export interface AccountRepository {
   getPage(f:AccountFilters,l:number,o:number):Promise<AccountWithList[]>;
   count(f:AccountFilters):Promise<number>;
   findExistingUsernames(u:string[]):Promise<Set<string>>;
+  findUsernameChanges(candidates:UsernameChangeCandidate[]):Promise<UsernameChangeMatch[]>;
+  applyUsernameChanges(changes:UsernameChangeMatch[],importId:number|null):Promise<void>;
   getIdsByUsernames(u:string[]):Promise<number[]>;
   insertMany(i:NewAccountInput[],p?:(n:number,t:number)=>void):Promise<Map<string,number>>;
   updateMetadata(id:number,m:AccountMetadataUpdate):Promise<void>;
