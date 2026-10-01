@@ -6,6 +6,7 @@ import { AccountStatus, AccountWithList, ACCOUNT_STATUSES, STATUS_COLORS, STATUS
 import { toUserMessage } from '../services/errors';
 import { openProfile } from '../services/instagram';
 import { fetchProfileMetadata } from '../services/profileImage';
+import { saveImageToDeviceStorage } from '../services/imageDownloadService';
 import { downloadImage, saveImageToDeviceStorage } from '../services/imageDownloadService';
 import type { QueueMode } from '../services/settingsService';
 import { ThemeColors } from '../utils/theme';
