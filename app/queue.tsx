@@ -6,7 +6,6 @@ import { AccountStatus, AccountWithList, ACCOUNT_STATUSES, STATUS_COLORS, STATUS
 import { toUserMessage } from '../services/errors';
 import { openProfile } from '../services/instagram';
 import { fetchProfileMetadata } from '../services/profileImage';
-import { saveImageToDeviceStorage } from '../services/imageDownloadService';
 import { downloadImage, saveImageToDeviceStorage } from '../services/imageDownloadService';
 import type { QueueMode } from '../services/settingsService';
 import { ThemeColors } from '../utils/theme';
@@ -315,8 +314,8 @@ const outcome = await openProfile(account.username, {
         ) : null}
 
         <View style={styles.accountBlock}>
-          {(account.profile_image_uri || account.image_url) ? (
-            <Image source={{ uri: account.profile_image_uri || account.image_url || undefined }} style={styles.avatar} />
+          {(account.profile_image_uri || account.local_image_path || account.image_url || account.profile_image_url) ? (
+            <Image source={{ uri: account.profile_image_uri || account.local_image_path || account.image_url || account.profile_image_url || undefined }} style={styles.avatar} />
           ) : (
             <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
               <Text style={[styles.avatarPlaceholderText, { color: colors.textMuted }]}>{(account.username?.[0] || account.model_name?.[0] || '?').toUpperCase()}</Text>
