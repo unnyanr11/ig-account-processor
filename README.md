@@ -32,7 +32,7 @@ Processing statuses include New, Followed, Skipped, Unavailable, Already Followi
 
 Imported image URLs are preserved. The generic Babepedia advanced-search placeholder is recognized and is never bulk-downloaded as a genuine profile image.
 
-Actual images are stored in the application filesystem, not SQLite. SQLite stores metadata and local paths. Downloads use a controlled concurrency queue and validate HTTP(S) sources. The UI prefers local images, then remote URLs, then a placeholder.
+Actual images are stored in the application filesystem, not SQLite. SQLite stores metadata and local paths. Tapping profile images in account lists or the processing queue opens a full-screen viewer with fit/zoom controls. Downloads use a controlled concurrency queue and validate HTTP(S) sources. The UI prefers local images, then remote URLs, then a placeholder.
 
 The app does not fetch or scrape Instagram pages to obtain names or images.
 
@@ -64,7 +64,7 @@ For an EAS Android build:
     eas login
     eas build --profile preview --platform android
 
-The app uses the Android system document picker and does not require broad storage permission.
+The app uses the Android system document picker and does not require broad storage permission. The first image export asks for a destination folder and remembers that Android folder for later image exports.
 
 ## Validation
 
