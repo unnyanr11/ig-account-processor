@@ -15,6 +15,7 @@ export interface AppSettings {
   queueMode: QueueMode;
   queueStatus: AccountStatus;
   onboardingComplete: boolean;
+  imageSaveDirectoryUri: string | null;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -27,6 +28,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   queueMode: 'UNPROCESSED',
   queueStatus: AccountStatus.SKIPPED,
   onboardingComplete: false,
+  imageSaveDirectoryUri: null,
 };
 
 let current: AppSettings = DEFAULT_SETTINGS;
