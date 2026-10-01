@@ -19,7 +19,7 @@ function AccountCard({ account, colors, onPress }: Props) {
     <Pressable
       onPress={onPress}
       accessibilityRole='button'
-      accessibilityLabel={`${account.model_name || 'Model'}, ${account.username ? `Instagram @${account.username}` : 'IG username not available'}, ${account.x_username ? `X @${account.x_username}` : 'X username not available'}, status ${label}. Open details`}
+      accessibilityLabel={`${account.model_name || 'Model'}, ${account.username ? `Instagram @${account.username}` : 'IG username not available'}, ${account.x_username ? `X @${account.x_username}` : 'X username not available'}, ${account.tiktok_username ? `TikTok @${account.tiktok_username}` : 'TikTok username not available'}, status ${label}. Open details`}
       style={({ pressed }) => [styles.card, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.85 : 1 }]}
     >
       <View style={styles.top}>
@@ -32,7 +32,7 @@ function AccountCard({ account, colors, onPress }: Props) {
         )}
         <View style={styles.identity}>
           <Text style={[styles.displayName, { color: colors.text }]} numberOfLines={1}>{account.model_name || account.display_name || account.full_name || 'Unnamed model'}</Text>
-          <Text style={[styles.username, { color: colors.textSecondary }]} numberOfLines={1}>{account.username ? `IG: @${account.username}` : 'IG username not available'}</Text><Text style={[styles.username, { color: colors.textSecondary }]} numberOfLines={1}>{account.x_username ? `X: @${account.x_username}` : 'X username not available'}</Text>
+          <Text style={[styles.username, { color: colors.textSecondary }]} numberOfLines={1}>{account.username ? `IG: @${account.username}` : 'IG username not available'}</Text><Text style={[styles.username, { color: colors.textSecondary }]} numberOfLines={1}>{account.x_username ? `X: @${account.x_username}` : 'X username not available'}</Text><Text style={[styles.username, { color: colors.textSecondary }]} numberOfLines={1}>{account.tiktok_username ? `TikTok: @${account.tiktok_username}` : 'TikTok username not available'}</Text>
         </View>
         <View style={[styles.badge, { borderColor: color }]}>
           <Text style={[styles.badgeText, { color }]}>{STATUS_SYMBOLS[account.status]} {label}</Text>
