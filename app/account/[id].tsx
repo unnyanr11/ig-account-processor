@@ -132,6 +132,8 @@ export default function AccountDetailsScreen() {
 
   const openX = async () => { if (!account?.x_username) { Alert.alert('X unavailable','X username not available'); return; } try { await Linking.openURL(account.x_url || `https://x.com/${encodeURIComponent(account.x_username)}/`); } catch { Alert.alert('Could not open X','The X profile could not be opened.'); } };
 
+  const openTikTok = async () => { if (!account?.tiktok_username) { Alert.alert('TikTok unavailable','TikTok username not available'); return; } try { await Linking.openURL(account.tiktok_url || `https://www.tiktok.com/@${encodeURIComponent(account.tiktok_username)}`); } catch { Alert.alert('Could not open TikTok','The TikTok profile could not be opened.'); } };
+
   const openInstagram = async () => {
     if (!account) return;
     if (!account.username?.trim()) { Alert.alert('Instagram unavailable','IG username not available'); return; }
@@ -206,7 +208,7 @@ const outcome = await openProfile(account.username, {
           </View>
         )}
         <Text style={[styles.displayName, { color: colors.text }]} selectable accessibilityRole='header'>{account.model_name || account.display_name || account.full_name || 'Unnamed model'}</Text>
-        <Text style={[styles.username, { color: colors.textSecondary }]} selectable>{account.username ? `IG: @${account.username}` : 'IG username not available'}</Text><Text style={[styles.username, { color: colors.textSecondary }]} selectable>{account.x_username ? `X: @${account.x_username}` : 'X username not available'}</Text>
+        <Text style={[styles.username, { color: colors.textSecondary }]} selectable>{account.username ? `IG: @${account.username}` : 'IG username not available'}</Text><Text style={[styles.username, { color: colors.textSecondary }]} selectable>{account.x_username ? `X: @${account.x_username}` : 'X username not available'}</Text><Text style={[styles.username, { color: colors.textSecondary }]} selectable>{account.tiktok_username ? `TikTok: @${account.tiktok_username}` : 'TikTok username not available'}</Text>
         <View style={[styles.badge, { borderColor: statusColor }]} accessible accessibilityLabel={`Status ${STATUS_LABELS[account.status]}`}>
           <Text style={[styles.badgeText, { color: statusColor }]}>{STATUS_SYMBOLS[account.status]} {STATUS_LABELS[account.status].toUpperCase()}</Text>
         </View>
@@ -222,7 +224,7 @@ const outcome = await openProfile(account.username, {
 
       {(account.profile_image_uri || account.local_image_path || account.profile_image_url || account.image_url) ? <Pressable onPress={() => void saveToDevice()} disabled={busy} accessibilityRole='button' style={[styles.secondary, { backgroundColor: colors.surfaceAlt, opacity: busy ? 0.6 : 1 }]}><Text style={[styles.secondaryText, { color: colors.text }]}>Download Image to Device</Text></Pressable> : null}
 
-      <Pressable onPress={openInstagram} accessibilityRole='button' accessibilityLabel='Open Instagram profile' style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}><Text style={styles.primaryText}>Open Instagram</Text></Pressable><Pressable onPress={openX} accessibilityRole='button' accessibilityLabel='Open X profile' style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}><Text style={styles.primaryText}>Open X</Text></Pressable>
+      <Pressable onPress={openInstagram} accessibilityRole='button' accessibilityLabel='Open Instagram profile' style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}><Text style={styles.primaryText}>Open Instagram</Text></Pressable><Pressable onPress={openX} accessibilityRole='button' accessibilityLabel='Open X profile' style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}><Text style={styles.primaryText}>Open X</Text></Pressable><Pressable onPress={openTikTok} accessibilityRole='button' accessibilityLabel='Open TikTok profile' style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}><Text style={styles.primaryText}>Open TikTok</Text></Pressable>
 
       {message ? <Text style={[styles.message, { color: colors.textSecondary }]} accessibilityLiveRegion='polite'>{message}</Text> : null}
 
