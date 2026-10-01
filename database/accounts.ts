@@ -31,7 +31,7 @@ export function findExistingUsernames(usernames: string[]): Promise<Set<string>>
 export function getIdsByUsernames(usernames: string[]): Promise<number[]> { return withDb('Failed to look up accounts', async (db) => { const ids: number[] = []; if (!usernames.length) return ids; for (let i = 0; i < usernames.length; i += CHUNK) { const chunk = usernames.slice(i, i + CHUNK); const marks = chunk.map(() => '?').join(','); const rows = await db.getAllAsync<{ id: number }>(`SELECT id FROM accounts WHERE username IN (${marks})`, chunk); rows.forEach((r) => ids.push(r.id)); } return ids; }); }
 export function insertMany(inputs: NewAccountInput[], onProgress?: (done: number, total: number) => void): Promise<Map<string, number>> {
   return withDb('Failed to save accounts', async (db) => {
-    const inserted = new Map<string, number>();
+    const saved = new Map<string, number>();
     const ts = nowIso();
     for (let i = 0; i < inputs.length; i += CHUNK) {
       const chunk = inputs.slice(i, i + CHUNK);
@@ -40,10 +40,13 @@ export function insertMany(inputs: NewAccountInput[], onProgress?: (done: number
           if (!a.username) continue;
           try {
             const result = await txn.runAsync(
-              'INSERT OR IGNORE INTO accounts (username, instagram_url, model_name, letter, display_name, full_name, profile_image_url, image_url, profile_image_uri, local_image_path, source_url, source_file_name, source_file_type, source_mime_type, source_row, source_import_id, raw_data_json, status, list_id, source, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+              'INSERT INTO accounts (username, instagram_url, model_name, letter, display_name, full_name, profile_image_url, image_url, profile_image_uri, local_image_path, source_url, source_file_name, source_file_type, source_mime_type, source_row, source_import_id, raw_data_json, status, list_id, source, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(username) DO UPDATE SET instagram_url=excluded.instagram_url, model_name=excluded.model_name, letter=excluded.letter, display_name=excluded.display_name, full_name=excluded.full_name, profile_image_url=excluded.profile_image_url, image_url=excluded.image_url, profile_image_uri=excluded.profile_image_uri, local_image_path=COALESCE(excluded.local_image_path, accounts.local_image_path), source_url=excluded.source_url, source_file_name=excluded.source_file_name, source_file_type=excluded.source_file_type, source_mime_type=excluded.source_mime_type, source_row=excluded.source_row, source_import_id=excluded.source_import_id, raw_data_json=excluded.raw_data_json, source=COALESCE(excluded.source, accounts.source), notes=COALESCE(excluded.notes, accounts.notes), updated_at=excluded.updated_at',
               [a.username, a.instagram_url, a.model_name ?? null, a.letter ?? null, a.display_name ?? null, a.full_name ?? null, a.profile_image_url ?? null, a.image_url ?? null, a.profile_image_uri ?? null, a.local_image_path ?? null, a.source_url ?? null, a.source_file_name ?? null, a.source_file_type ?? null, a.source_mime_type ?? null, a.source_row ?? null, a.source_import_id ?? null, a.raw_data_json ?? null, 'NEW', a.list_id ?? null, a.source ?? null, a.notes ?? null, a.created_at ?? ts, a.updated_at ?? ts]
             );
-            if (result.changes > 0) inserted.set(a.username, result.lastInsertRowId);
+            const row = await txn.getFirstAsync<{ id: number }>('SELECT id FROM accounts WHERE username = ?', [a.username]);
+            if (!row) throw new DatabaseError('Account was saved but could not be reloaded');
+            saved.set(a.username, row.id);
+            void result;
           } catch (error) {
             const detail = error instanceof Error ? error.message : String(error);
             throw new DatabaseError('Failed to save account @' + a.username + ': ' + detail, error);
@@ -52,7 +55,7 @@ export function insertMany(inputs: NewAccountInput[], onProgress?: (done: number
       });
       onProgress?.(Math.min(i + CHUNK, inputs.length), inputs.length);
     }
-    return inserted;
+    return saved;
   });
 }
 export function updateMetadata(id: number, metadata: AccountMetadataUpdate): Promise<void> { return withDb('Failed to update account metadata', async (db) => { const row = await db.getFirstAsync<{ id: number }>('SELECT id FROM accounts WHERE id = ?', [id]); if (!row) throw new DatabaseError('Account not found'); const nextDisplay = metadata.display_name ?? null; const nextFull = metadata.full_name ?? null; const nextImage = metadata.image_url ?? null; const nextLocal = metadata.profile_image_uri ?? null; const nextProfile = metadata.profile_image_url ?? metadata.image_url ?? null; await db.runAsync('UPDATE accounts SET display_name = ?, full_name = ?, profile_image_url = ?, image_url = ?, profile_image_uri = ?, updated_at = ? WHERE id = ?', [nextDisplay, nextFull, nextProfile, nextImage, nextLocal, nowIso(), id]); }); }
