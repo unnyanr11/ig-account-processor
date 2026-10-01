@@ -21,7 +21,8 @@ export const POST_MIGRATIONS:{version:number;sql:string[]}[]=[
 `CREATE INDEX IF NOT EXISTS idx_list_accounts_list ON list_accounts(list_id)`,`CREATE INDEX IF NOT EXISTS idx_list_accounts_account ON list_accounts(account_id)`
 ]},
 {version:7,sql:[`CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT NOT NULL)`]},
-{version:8,sql:[`ALTER TABLE accounts ADD COLUMN full_name TEXT`,`ALTER TABLE accounts ADD COLUMN profile_image_uri TEXT`]}
+{version:8,sql:[`ALTER TABLE accounts ADD COLUMN full_name TEXT`,`ALTER TABLE accounts ADD COLUMN profile_image_uri TEXT`]},
+{version:9,sql:[`CREATE TABLE IF NOT EXISTS account_username_history(id INTEGER PRIMARY KEY AUTOINCREMENT,account_id INTEGER NOT NULL,old_username TEXT NOT NULL,new_username TEXT NOT NULL,import_id INTEGER,changed_at TEXT NOT NULL,FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE)`,`CREATE INDEX IF NOT EXISTS idx_username_history_account ON account_username_history(account_id)`,`CREATE INDEX IF NOT EXISTS idx_username_history_old ON account_username_history(old_username)`]}
 ];
 export const REQUIRED_ACCOUNT_COLUMNS = [
   'username','instagram_url','model_name','letter','display_name','full_name',
