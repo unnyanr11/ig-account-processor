@@ -110,6 +110,37 @@ export async function queueImageDownloads(
   return p;
 }
 
+
+export async function saveImageToDeviceStorage(
+  accountId: number,
+  remoteUrl: string | null,
+  existingLocalPath?: string | null,
+): Promise<string | null> {
+  const source = existingLocalPath || (remoteUrl ? await downloadImage(accountId, remoteUrl) : null);
+  if (!source) return null;
+
+  const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync(
+    FileSystem.StorageAccessFramework.getUriForDirectoryInRoot('Download'),
+  );
+  if (!permissions.granted) return null;
+
+  const ext = (remoteUrl?.match(/\.(jpe?g|png|webp|gif)(?:[?#]|$)/i)?.[1] || 'jpg').toLowerCase();
+  const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : ext === 'gif' ? 'image/gif' : 'image/jpeg';
+  const fileName = `Instagram_${accountId}_${Date.now()}.${ext}`;
+  const target = await FileSystem.StorageAccessFramework.createFileAsync(
+    permissions.directoryUri,
+    fileName,
+    mime,
+  );
+  const base64 = await FileSystem.readAsStringAsync(source, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  await FileSystem.writeAsStringAsync(target, base64, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  return target;
+}
+
 export async function saveImageRecord(accountId: number, remoteUrl: string | null, localPath: string | null) {
   if (!remoteUrl && !localPath) return;
 
