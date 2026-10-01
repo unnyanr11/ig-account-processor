@@ -76,7 +76,7 @@ export function getIdsByUsernames(usernames: string[]): Promise<number[]> { retu
         if (candidatesByName.length === 1) row = candidatesByName[0];
       }
 
-      if (row && row.username !== c.username && !seenAccounts.has(row.id)) {
+      if (row && row.username && row.username !== c.username && !seenAccounts.has(row.id)) {
         matches.push({account_id:row.id,old_username:row.username,new_username:c.username});
         seenAccounts.add(row.id);
       }
@@ -125,7 +125,7 @@ export function insertMany(inputs: NewAccountInput[], onProgress?: (done: number
               ? await txn.getFirstAsync<{ id: number }>('SELECT id FROM accounts WHERE username = ?', [a.username])
               : await txn.getFirstAsync<{ id: number }>('SELECT id FROM accounts WHERE identity_key = ?', [a.identity_key!]);
             if (!row) throw new DatabaseError('Account was saved but could not be reloaded');
-            if (a.username) saved.set(a.username, row.id);
+            if (a.username) saved.set(a.username, row.id); if (a.identity_key) saved.set(a.identity_key, row.id);
           } catch (error) {
             const detail = error instanceof Error ? error.message : String(error);
             throw new DatabaseError('Failed to save account' + (a.username ? ' @' + a.username : '') + ': ' + detail, error);
