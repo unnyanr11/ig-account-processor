@@ -10,7 +10,7 @@ import { AccountStatus, ACCOUNT_STATUSES, STATUS_LABELS, type AccountWithList } 
 import { useTheme } from '../utils/useTheme';
 import { useDebouncedValue } from '../utils/useDebouncedValue';
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 100;
 
 export type AccountBrowserProps = {
   baseFilters?: AccountFilters;
@@ -77,7 +77,12 @@ export default function AccountBrowser({ baseFilters = {}, header }: AccountBrow
             onPress={() => router.push({ pathname: '/account/[id]', params: { id: String(item.id) } })}
           />
         )}
-        onEndReachedThreshold={0.2}
+        initialNumToRender={12}
+        maxToRenderPerBatch={12}
+        windowSize={9}
+        updateCellsBatchingPeriod={40}
+        removeClippedSubviews={true}
+        onEndReachedThreshold={0.35}
         onEndReached={() => {
           if (!loading && !loadingMore && accounts.length < total) void load(false, accounts.length);
         }}
@@ -86,6 +91,7 @@ export default function AccountBrowser({ baseFilters = {}, header }: AccountBrow
             {header}
             <SearchBar value={search} onChangeText={setSearch} colors={colors} />
             <FilterBar options={filterOptions} selectedKey={status} onSelect={(key) => setStatus(key as 'ALL' | AccountStatus)} colors={colors} />
+            <Text style={[styles.datasetInfo, { color: colors.textMuted }]}>{accounts.length.toLocaleString()} of {total.toLocaleString()} accounts loaded</Text>
             {error ? <Text style={[styles.error, { color: colors.danger }]}>{error}</Text> : null}
           </View>
         )}
@@ -108,4 +114,5 @@ const styles = StyleSheet.create({
   loader: { marginVertical: 14 },
   overlay: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
   error: { fontSize: 14 },
+  datasetInfo: { fontSize: 12, marginTop: -2 },
 });
