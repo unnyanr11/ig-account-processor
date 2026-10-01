@@ -28,7 +28,7 @@ export const POST_MIGRATIONS:{version:number;sql:string[]}[]=[
 ]},
 {version:11,sql:[
 `ALTER TABLE accounts ADD COLUMN tiktok_username TEXT`,`ALTER TABLE accounts ADD COLUMN tiktok_url TEXT`,`CREATE INDEX IF NOT EXISTS idx_accounts_tiktok_username ON accounts(tiktok_username)`
-]}
+]},
 {version:12,sql:[
 `ALTER TABLE app_import_accounts ADD COLUMN previous_account_json TEXT`,
 `ALTER TABLE app_import_accounts ADD COLUMN created_by_import INTEGER NOT NULL DEFAULT 0`,
