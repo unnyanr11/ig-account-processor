@@ -17,7 +17,7 @@ function buildWhere(filters: AccountFilters): { where: string; params: Param[] }
   const importId = filters.importId ?? filters.importBatchId;
   if (importId !== undefined) { clauses.push('a.id IN (SELECT account_id FROM app_import_accounts WHERE import_id = ?)'); params.push(importId); }
   const term = filters.search?.trim();
-  if (term) { const like = `%${escapeLike(term)}%`; clauses.push(`(a.username LIKE ? ESCAPE '!' OR a.display_name LIKE ? ESCAPE '!' OR a.full_name LIKE ? ESCAPE '!' OR a.notes LIKE ? ESCAPE '!' OR a.source LIKE ? ESCAPE '!')`); params.push(like, like, like, like, like); }
+  if (term) { const like = `%${escapeLike(term)}%`; clauses.push(`(a.username LIKE ? ESCAPE '!' OR a.display_name LIKE ? ESCAPE '!' OR a.full_name LIKE ? ESCAPE '!' OR a.x_username LIKE ? ESCAPE '!' OR a.x_url LIKE ? ESCAPE '!' OR a.tiktok_username LIKE ? ESCAPE '!' OR a.tiktok_url LIKE ? ESCAPE '!' OR a.notes LIKE ? ESCAPE '!' OR a.source LIKE ? ESCAPE '!')`); params.push(like, like, like, like, like, like, like, like, like); }
   if (filters.importedToday) { const [start, end] = todayRange(); clauses.push('a.created_at >= ? AND a.created_at < ?'); params.push(start, end); }
   if (filters.updatedToday) { const [start, end] = todayRange(); clauses.push('a.updated_at >= ? AND a.updated_at < ?'); params.push(start, end); }
   if (filters.neverProcessed) clauses.push('a.last_processed_at IS NULL');
