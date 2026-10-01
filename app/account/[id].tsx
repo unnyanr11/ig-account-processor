@@ -15,6 +15,7 @@ import { useSettings } from '../../utils/useSettings';
 import { useTheme } from '../../utils/useTheme';
 import ListPickerDialog from '../../components/ListPickerDialog';
 import StatusButton from '../../components/StatusButton';
+import FullScreenImage from '../../components/FullScreenImage';
 
 type Phase = 'loading' | 'ready' | 'missing' | 'error';
 
