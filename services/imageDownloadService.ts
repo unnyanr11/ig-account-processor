@@ -40,10 +40,7 @@ export async function downloadImage(accountId: number, url: string | null): Prom
 
   try {
     const info = await FileSystem.getInfoAsync(target);
-    if (info.exists) return target;
-
-    const result = await FileSystem.downloadAsync(url!, target);
-    const uri = result.uri || null;
+    const uri = info.exists ? target : (await FileSystem.downloadAsync(url!, target)).uri || null;
     if (!uri) return null;
 
     await withDb('Failed to save downloaded image', async (db) => {
@@ -52,10 +49,21 @@ export async function downloadImage(accountId: number, url: string | null): Prom
         'UPDATE accounts SET local_image_path = ?, profile_image_uri = ?, updated_at = ? WHERE id = ?',
         [uri, uri, ts, accountId],
       );
-      await db.runAsync(
-        'UPDATE account_images SET local_path = ?, download_status = ?, downloaded_at = ?, updated_at = ? WHERE account_id = ? AND remote_url = ?',
-        [uri, 'DOWNLOADED', ts, ts, accountId, url!],
+      const existing = await db.getFirstAsync<{ id: number }>(
+        'SELECT id FROM account_images WHERE account_id = ? AND remote_url = ? LIMIT 1',
+        [accountId, url!],
       );
+      if (existing) {
+        await db.runAsync(
+          'UPDATE account_images SET local_path = ?, download_status = ?, downloaded_at = ?, updated_at = ? WHERE id = ?',
+          [uri, 'DOWNLOADED', ts, ts, existing.id],
+        );
+      } else {
+        await db.runAsync(
+          'INSERT INTO account_images(account_id,remote_url,local_path,is_primary,image_type,download_status,downloaded_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)',
+          [accountId, url!, uri, 1, 'profile', 'DOWNLOADED', ts, ts, ts],
+        );
+      }
     });
 
     return uri;
