@@ -121,6 +121,13 @@ export default function AccountDetailsScreen() {
     }, 'List updated');
   };
 
+  const saveToDevice = () => run(async () => {
+    if (!account) return;
+    const remote = account.image_url ?? account.profile_image_url ?? null;
+    const uri = await saveImageToDeviceStorage(account.id, remote, account.profile_image_uri ?? account.local_image_path ?? null);
+    if (!uri) throw new Error('The image was not saved. Choose a storage folder and try again.');
+  }, 'Image saved to your Download folder');
+
   const openInstagram = async () => {
     if (!account) return;
     if (!account.username?.trim()) {
@@ -214,6 +221,8 @@ const outcome = await openProfile(account.username, {
       ) : null}
 
       {(account.profile_image_url || account.image_url) ? <Pressable onPress={() => void downloadLocal()} disabled={busy} accessibilityRole='button' style={[styles.secondary, { backgroundColor: colors.surfaceAlt, opacity: busy ? 0.6 : 1 }]}><Text style={[styles.secondaryText, { color: colors.text }]}>Download Image</Text></Pressable> : null}
+
+      {(account.profile_image_uri || account.local_image_path || account.profile_image_url || account.image_url) ? <Pressable onPress={() => void saveToDevice()} disabled={busy} accessibilityRole='button' style={[styles.secondary, { backgroundColor: colors.surfaceAlt, opacity: busy ? 0.6 : 1 }]}><Text style={[styles.secondaryText, { color: colors.text }]}>Download Image to Device</Text></Pressable> : null}
 
       <Pressable onPress={openInstagram} accessibilityRole='button' accessibilityLabel={`Open ${account.username} on Instagram`} style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}>
         <Text style={styles.primaryText}>Open Instagram</Text>
