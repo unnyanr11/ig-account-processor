@@ -2,6 +2,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { withDb } from '../database/database';
 import { isPlaceholderImage, nowIso } from '../utils/normalization';
 import { IMAGE_DOWNLOAD_CONCURRENCY } from '../utils/constants';
+import { getSettingsSnapshot, updateSetting } from './settingsService';
 
 export interface ImageProgress {
   done: number;
