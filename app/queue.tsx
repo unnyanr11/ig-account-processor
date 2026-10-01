@@ -348,9 +348,8 @@ export default function QueueScreen() {
           </Pressable>
         ) : null}
 
-        <Pressable onPress={handleOpen} accessibilityRole='button' accessibilityLabel='Open Instagram profile' style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}><Text style={styles.primaryText}>Open Instagram</Text></Pressable><Pressable onPress={handleOpenX} accessibilityRole='button' accessibilityLabel='Open X profile' style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}><Text style={styles.primaryText}>Open X</Text></Pressable>
-          <Text style={styles.primaryText}>Open Instagram</Text>
-        </Pressable>
+        <Pressable onPress={handleOpen} accessibilityRole='button' accessibilityLabel='Open Instagram profile' style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}><Text style={styles.primaryText}>Open Instagram</Text></Pressable>
+        <Pressable onPress={handleOpenX} accessibilityRole='button' accessibilityLabel='Open X profile' style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}><Text style={styles.primaryText}>Open X</Text></Pressable>
 
         {account.source_url ? (
           <Pressable onPress={async () => { try { await Linking.openURL(account.source_url!); } catch { Alert.alert('Could not open source', 'The source link could not be opened.'); } }} accessibilityRole='link' accessibilityLabel='Open source link' style={[styles.secondaryAction, { backgroundColor: colors.surfaceAlt }]}>
