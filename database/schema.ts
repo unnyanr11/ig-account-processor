@@ -22,10 +22,13 @@ export const POST_MIGRATIONS:{version:number;sql:string[]}[]=[
 ]},
 {version:7,sql:[`CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT NOT NULL)`]},
 {version:8,sql:[`ALTER TABLE accounts ADD COLUMN full_name TEXT`,`ALTER TABLE accounts ADD COLUMN profile_image_uri TEXT`]},
-{version:9,sql:[`CREATE TABLE IF NOT EXISTS account_username_history(id INTEGER PRIMARY KEY AUTOINCREMENT,account_id INTEGER NOT NULL,old_username TEXT NOT NULL,new_username TEXT NOT NULL,import_id INTEGER,changed_at TEXT NOT NULL,FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE)`,`CREATE INDEX IF NOT EXISTS idx_username_history_account ON account_username_history(account_id)`,`CREATE INDEX IF NOT EXISTS idx_username_history_old ON account_username_history(old_username)`]}
+{version:9,sql:[`CREATE TABLE IF NOT EXISTS account_username_history(id INTEGER PRIMARY KEY AUTOINCREMENT,account_id INTEGER NOT NULL,old_username TEXT NOT NULL,new_username TEXT NOT NULL,import_id INTEGER,changed_at TEXT NOT NULL,FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE)`,`CREATE INDEX IF NOT EXISTS idx_username_history_account ON account_username_history(account_id)`,`CREATE INDEX IF NOT EXISTS idx_username_history_old ON account_username_history(old_username)`]},
+{version:10,sql:[
+`ALTER TABLE accounts ADD COLUMN x_username TEXT`,`ALTER TABLE accounts ADD COLUMN x_url TEXT`,`ALTER TABLE accounts ADD COLUMN identity_key TEXT`,`CREATE INDEX IF NOT EXISTS idx_accounts_x_username ON accounts(x_username)`,`CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_identity_key ON accounts(identity_key)`
+]}
 ];
 export const REQUIRED_ACCOUNT_COLUMNS = [
-  'username','instagram_url','model_name','letter','display_name','full_name',
+  'username','instagram_url','x_username','x_url','identity_key','model_name','letter','display_name','full_name',
   'profile_image_url','image_url','profile_image_uri','local_image_path',
   'source_url','source_file_name','source_file_type','source_mime_type',
   'source_row','source_import_id','raw_data_json','last_processed_at',
