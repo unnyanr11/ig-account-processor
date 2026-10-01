@@ -329,7 +329,7 @@ export default function QueueScreen() {
 
         <View style={styles.accountBlock}>
           {(account.profile_image_uri || account.local_image_path || account.image_url || account.profile_image_url) ? (
-            <Image source={{ uri: account.profile_image_uri || account.local_image_path || account.image_url || account.profile_image_url || undefined }} style={styles.avatar} />
+            <FullScreenImage uri={account.profile_image_uri || account.local_image_path || account.image_url || account.profile_image_url} size={92} textColor={colors.text} />
           ) : (
             <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
               <Text style={[styles.avatarPlaceholderText, { color: colors.textMuted }]}>{(account.username?.[0] || account.model_name?.[0] || '?').toUpperCase()}</Text>
