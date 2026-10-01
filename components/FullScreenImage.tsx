@@ -16,7 +16,7 @@ export default function FullScreenImage({ uri, size, textColor, label = 'Profile
   return (
     <>
       <Pressable
-        onPress={() => { setZoomed(false); setVisible(true); }}
+        onPress={(event) => { event.stopPropagation(); setZoomed(false); setVisible(true); }}
         accessibilityRole='imagebutton'
         accessibilityLabel={'View ' + label + ' full screen'}
       >
