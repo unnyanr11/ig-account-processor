@@ -14,6 +14,7 @@ import { useTheme } from '../utils/useTheme';
 import ConfirmDialog from '../components/ConfirmDialog';
 import ProgressBar from '../components/ProgressBar';
 import StatusButton from '../components/StatusButton';
+import FullScreenImage from '../components/FullScreenImage';
 import UndoBar from '../components/UndoBar';
 
 const UNDO_MS = 6000;
