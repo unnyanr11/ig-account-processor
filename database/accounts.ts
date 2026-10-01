@@ -28,7 +28,52 @@ export function getById(id: number): Promise<AccountWithList | null> { return wi
 export function getPage(filters: AccountFilters, limit: number, offset: number): Promise<AccountWithList[]> { return withDb('Failed to load accounts', async (db) => { const { where, params } = buildWhere(filters); return db.getAllAsync<AccountWithList>(`${SELECT_WITH_LIST} ${where} ORDER BY a.id ASC LIMIT ? OFFSET ?`, [...params, limit, offset]); }); }
 export function count(filters: AccountFilters): Promise<number> { return withDb('Failed to count accounts', async (db) => { const { where, params } = buildWhere(filters); const row = await db.getFirstAsync<{ n: number }>(`SELECT COUNT(*) AS n FROM accounts a ${where}`, params); return row?.n ?? 0; }); }
 export function findExistingUsernames(usernames: string[]): Promise<Set<string>> { return withDb('Failed to check existing accounts', async (db) => { const found = new Set<string>(); if (!usernames.length) return found; for (let i = 0; i < usernames.length; i += CHUNK) { const chunk = usernames.slice(i, i + CHUNK); const marks = chunk.map(() => '?').join(','); const rows = await db.getAllAsync<{ username: string }>(`SELECT username FROM accounts WHERE username IN (${marks})`, chunk); rows.forEach((r) => found.add(r.username)); } return found; }); }
-export function getIdsByUsernames(usernames: string[]): Promise<number[]> { return withDb('Failed to look up accounts', async (db) => { const ids: number[] = []; if (!usernames.length) return ids; for (let i = 0; i < usernames.length; i += CHUNK) { const chunk = usernames.slice(i, i + CHUNK); const marks = chunk.map(() => '?').join(','); const rows = await db.getAllAsync<{ id: number }>(`SELECT id FROM accounts WHERE username IN (${marks})`, chunk); rows.forEach((r) => ids.push(r.id)); } return ids; }); }
+export function getIdsByUsernames(usernames: string[]): Promise<number[]> { return withDb('Failed to look up accounts', async (db) => { const ids: number[] = []; if (!usernames.length) return ids; for (let i = 0; i < usernames.length; i += CHUNK) { const chunk = usernames.slice(i, i + CHUNK); const marks = chunk.map(() => '?').join(','); const rows = await db.getAllAsync<{ id: number }>(`SELECT id FROM accounts WHERE username IN (${marks})`, chunk); rows.forEach((r) => ids.push(r.id)); } return ids; }); }export function findUsernameChanges(candidates: import('./interfaces').UsernameChangeCandidate[]): Promise<import('./interfaces').UsernameChangeMatch[]> {
+  return withDb('Failed to detect username changes', async (db) => {
+    const matches: import('./interfaces').UsernameChangeMatch[] = [];
+    const seenAccounts = new Set<number>();
+    for (const c of candidates) {
+      if (!c.username) continue;
+      const exact = await db.getFirstAsync<{ id:number; username:string }>('SELECT id, username FROM accounts WHERE username = ?', [c.username]);
+      if (exact) continue;
+      let row: {id:number; username:string}|null = null;
+      if (c.source_url?.trim()) {
+        row = await db.getFirstAsync<{id:number;username:string}>(
+          'SELECT id, username FROM accounts WHERE lower(trim(source_url)) = lower(trim(?)) LIMIT 1',
+          [c.source_url.trim()]
+        );
+      }
+      if (!row && c.model_name?.trim() && c.letter?.trim()) {
+        const candidatesByName = await db.getAllAsync<{id:number;username:string}>(
+          'SELECT id, username FROM accounts WHERE lower(trim(model_name)) = lower(trim(?)) AND lower(trim(letter)) = lower(trim(?))',
+          [c.model_name.trim(), c.letter.trim()]
+        );
+        if (candidatesByName.length === 1) row = candidatesByName[0];
+      }
+      if (row && row.username !== c.username && !seenAccounts.has(row.id)) {
+        matches.push({account_id:row.id,old_username:row.username,new_username:c.username});
+        seenAccounts.add(row.id);
+      }
+    }
+    return matches;
+  });
+}
+
+export function applyUsernameChanges(changes: import('./interfaces').UsernameChangeMatch[], importId:number|null): Promise<void> {
+  return withDb('Failed to update usernames', async (db) => db.withTransactionAsync(async () => {
+    for (const c of changes) {
+      const conflict = await db.getFirstAsync<{id:number}>('SELECT id FROM accounts WHERE username = ? AND id <> ?', [c.new_username, c.account_id]);
+      if (conflict) continue;
+      const current = await db.getFirstAsync<{username:string}>('SELECT username FROM accounts WHERE id = ?', [c.account_id]);
+      if (!current || current.username === c.new_username) continue;
+      const ts = nowIso();
+      await db.runAsync('UPDATE accounts SET username = ?, instagram_url = ?, updated_at = ? WHERE id = ?', [c.new_username, `https://www.instagram.com/${encodeURIComponent(c.new_username)}/`, ts, c.account_id]);
+      await db.runAsync('INSERT INTO account_username_history(account_id,old_username,new_username,import_id,changed_at) VALUES(?,?,?,?,?)',[c.account_id,current.username,c.new_username,importId,ts]);
+    }
+  }));
+}
+
+
 export function insertMany(inputs: NewAccountInput[], onProgress?: (done: number, total: number) => void): Promise<Map<string, number>> {
   return withDb('Failed to save accounts', async (db) => {
     const saved = new Map<string, number>();
