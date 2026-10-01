@@ -117,6 +117,14 @@ export function insertMany(
 
     await db.withExclusiveTransactionAsync(async (txn) => {
       // Apply detected renames inside the same transaction as the import.
+      const importSnapshots=new Map<number,string>();
+      if(importId){
+        for(const change of usernameChanges){
+          const snapshot=await txn.getFirstAsync<Record<string,unknown>>('SELECT * FROM accounts WHERE id=?',[change.account_id]);
+          if(snapshot) importSnapshots.set(change.account_id,JSON.stringify(snapshot));
+        }
+      }
+
       for (const change of usernameChanges) {
         const conflict = await txn.getFirstAsync<{id:number}>(
           'SELECT id FROM accounts WHERE username = ? AND id <> ?',
@@ -143,6 +151,8 @@ export function insertMany(
         const a=inputs[i];
         try {
           let accountId:number|null=null;
+          let previousAccountJson:string|null=null;
+          let createdByImport=0;
 
           if (a.identity_key) {
             const identityRow=await txn.getFirstAsync<{id:number}>(
@@ -150,6 +160,8 @@ export function insertMany(
               [a.identity_key],
             );
             if (identityRow) {
+              previousAccountJson=importSnapshots.get(identityRow.id) ?? null;
+              if(!previousAccountJson){const snapshot=await txn.getFirstAsync<Record<string,unknown>>('SELECT * FROM accounts WHERE id=?',[identityRow.id]);if(snapshot)previousAccountJson=JSON.stringify(snapshot);}
               if (a.username) {
                 const conflict=await txn.getFirstAsync<{id:number}>(
                   'SELECT id FROM accounts WHERE username = ? AND id <> ?',
@@ -166,12 +178,15 @@ export function insertMany(
           }
 
           if (accountId===null && a.username) {
+            const existingByUsername=await txn.getFirstAsync<Record<string,unknown>>('SELECT * FROM accounts WHERE username=?',[a.username]);
+            if(existingByUsername){const existingId=Number(existingByUsername.id);previousAccountJson=importSnapshots.get(existingId) ?? JSON.stringify(existingByUsername);}
             await txn.runAsync(
               'INSERT INTO accounts(username,instagram_url,x_username,x_url,tiktok_username,tiktok_url,identity_key,model_name,letter,display_name,full_name,profile_image_url,image_url,profile_image_uri,local_image_path,source_url,source_file_name,source_file_type,source_mime_type,source_row,source_import_id,raw_data_json,status,list_id,source,notes,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(username) DO UPDATE SET instagram_url=excluded.instagram_url,x_username=excluded.x_username,x_url=excluded.x_url,tiktok_username=excluded.tiktok_username,tiktok_url=excluded.tiktok_url,identity_key=COALESCE(excluded.identity_key,accounts.identity_key),model_name=excluded.model_name,letter=excluded.letter,display_name=excluded.display_name,full_name=excluded.full_name,profile_image_url=excluded.profile_image_url,image_url=excluded.image_url,profile_image_uri=COALESCE(excluded.profile_image_uri,accounts.profile_image_uri),local_image_path=COALESCE(excluded.local_image_path,accounts.local_image_path),source_url=excluded.source_url,source_file_name=excluded.source_file_name,source_file_type=excluded.source_file_type,source_mime_type=excluded.source_mime_type,source_row=excluded.source_row,source_import_id=excluded.source_import_id,raw_data_json=excluded.raw_data_json,source=COALESCE(excluded.source,accounts.source),notes=COALESCE(excluded.notes,accounts.notes),updated_at=excluded.updated_at',
               [a.username,a.instagram_url,a.x_username??null,a.x_url??null,a.tiktok_username??null,a.tiktok_url??null,a.identity_key??null,a.model_name??null,a.letter??null,a.display_name??null,a.full_name??null,a.profile_image_url??null,a.image_url??null,a.profile_image_uri??null,a.local_image_path??null,a.source_url??null,a.source_file_name??null,a.source_file_type??null,a.source_mime_type??null,a.source_row??null,a.source_import_id??null,a.raw_data_json??null,'NEW',a.list_id??null,a.source??null,a.notes??null,a.created_at??ts,a.updated_at??ts],
             );
             const row=await txn.getFirstAsync<{id:number}>('SELECT id FROM accounts WHERE username=?',[a.username]);
             accountId=row?.id??null;
+            if(accountId!==null&&!existingByUsername)createdByImport=1;
           }
 
           if (accountId===null) {
@@ -182,15 +197,16 @@ export function insertMany(
             );
             const row=await txn.getFirstAsync<{id:number}>('SELECT id FROM accounts WHERE identity_key=?',[a.identity_key]);
             accountId=row?.id??null;
+            if(accountId!==null)createdByImport=1;
           }
 
           if (accountId===null) throw new DatabaseError('Account was saved but could not be reloaded');
           if (a.username) saved.set(a.username,accountId);
           if (a.identity_key) saved.set(a.identity_key,accountId);
-          if (importId) await txn.runAsync(
-            'INSERT OR REPLACE INTO app_import_accounts(import_id,account_id,source_row) VALUES(?,?,?)',
-            [importId,accountId,a.source_row??null],
-          );
+          if (importId) {
+            await txn.runAsync('INSERT OR IGNORE INTO app_import_accounts(import_id,account_id,source_row,previous_account_json,created_by_import) VALUES(?,?,?,?,?)',[importId,accountId,a.source_row??null,previousAccountJson,createdByImport]);
+            await txn.runAsync('UPDATE app_import_accounts SET source_row=? WHERE import_id=? AND account_id=?',[a.source_row??null,importId,accountId]);
+          }
         } catch(error) {
           const detail=error instanceof Error?error.message:String(error);
           throw new DatabaseError('Failed to save account'+(a.username?' @'+a.username:'')+': '+detail,error);
