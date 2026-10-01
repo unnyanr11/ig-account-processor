@@ -102,7 +102,7 @@ export default function QueueScreen() {
     setTotal(count);
     setRemaining(left);
     setPhase('ready');
-  }, [scope]);
+  }, [scope, modeFilter]);
 
   useEffect(() => {
     if (!loaded) return;
