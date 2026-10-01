@@ -75,8 +75,8 @@ export default function AccountDetailsScreen() {
           username: account.username,
           displayName: account.display_name ?? account.full_name ?? '',
           fullName: account.full_name ?? account.display_name ?? '',
-          profileImageUrl: account.image_url ?? '',
-          profileImageUri: account.profile_image_uri ?? '',
+          profileImageUrl: account.image_url ?? account.profile_image_url ?? '',
+          profileImageUri: account.profile_image_uri ?? account.local_image_path ?? '',
         });
         await accountRepository.updateMetadata(account.id, {
           display_name: metadata.displayName ?? account.display_name ?? account.full_name ?? null,
