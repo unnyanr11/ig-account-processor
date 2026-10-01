@@ -43,7 +43,7 @@ export interface AccountRepository {
   findUsernameChanges(candidates:UsernameChangeCandidate[]):Promise<UsernameChangeMatch[]>;
   applyUsernameChanges(changes:UsernameChangeMatch[],importId:number|null):Promise<void>;
   getIdsByUsernames(u:string[]):Promise<number[]>;
-  insertMany(i:NewAccountInput[],p?:(n:number,t:number)=>void):Promise<Map<string,number>>;
+  insertMany(i:NewAccountInput[],p?:(n:number,t:number)=>void,importId?:number|null,usernameChanges?:UsernameChangeMatch[]):Promise<Map<string,number>>;
   updateMetadata(id:number,m:AccountMetadataUpdate):Promise<void>;
   setStatus(id:number,s:AccountStatus):Promise<AccountStatus>;
   setNotes(id:number,n:string):Promise<void>;
