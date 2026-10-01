@@ -128,7 +128,7 @@ export default function AccountDetailsScreen() {
     if (!uri) throw new Error('The image was not saved. Choose a storage folder and try again.');
   }, 'Image saved to your Download folder');
 
-  const openX = async () => { if (!account?.x_username) { Alert.alert('X unavailable','X username not available'); return; } try { await Linking.openURL(account.x_url || `https://x.com/${encodeURIComponent(account.x_username)}/`); } catch { Alert.alert('Could not open X','The X profile could not be opened.'); } };
+  const openSource = async () => { if (!account?.source_url) { Alert.alert('Source unavailable','No source link is available.'); return; } try { await Linking.openURL(account.source_url); } catch { Alert.alert('Could not open source','The source link could not be opened.'); } };\n\n  const openX = async () => { if (!account?.x_username) { Alert.alert('X unavailable','X username not available'); return; } try { await Linking.openURL(account.x_url || `https://x.com/${encodeURIComponent(account.x_username)}/`); } catch { Alert.alert('Could not open X','The X profile could not be opened.'); } };
 
   const openInstagram = async () => {
     if (!account) return;
@@ -227,7 +227,7 @@ const outcome = await openProfile(account.username, {
       <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <Field label='Created' value={formatDateHuman(account.created_at)} colors={colors} />
         <Field label='Last Updated' value={formatDateHuman(account.updated_at)} colors={colors} />
-        <Field label='Source' value={account.source ?? 'Unknown'} colors={colors} />
+        {account.source_url ? <Pressable onPress={openSource} accessibilityRole='link' accessibilityLabel='Open source link' style={styles.sourceLink}><Text style={[styles.sourceLabel, { color: colors.textSecondary }]}>Source</Text><Text style={[styles.sourceValue, { color: colors.primary }]} numberOfLines={2}>{account.source_url}</Text></Pressable> : <Field label='Source' value={account.source ?? 'Unknown'} colors={colors} />}
         <Field label='List' value={account.list_name ?? 'No list'} colors={colors} />
       </View>
 
@@ -302,6 +302,9 @@ function Field({ label, value, colors }: { label: string; value: string; colors:
 }
 
 const styles = StyleSheet.create({
+  sourceLink: { gap: 4, paddingVertical: 4 },
+  sourceLabel: { fontSize: 13, fontWeight: '700' },
+  sourceValue: { fontSize: 14, textDecorationLine: 'underline', lineHeight: 20 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28 },
   content: { padding: 16, paddingBottom: 48, gap: 14 },
   headerBlock: { alignItems: 'center', gap: 10, paddingVertical: 8 },
