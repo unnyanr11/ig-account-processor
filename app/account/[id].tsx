@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { accountRepository, historyRepository, listRepository } from '../../database';
 import { AccountStatus, AccountWithList, ACCOUNT_STATUSES, STATUS_COLORS, STATUS_LABELS, STATUS_SYMBOLS } from '../../types/account';
@@ -128,15 +128,9 @@ export default function AccountDetailsScreen() {
     if (!uri) throw new Error('The image was not saved. Choose a storage folder and try again.');
   }, 'Image saved to your Download folder');
 
-  const openInstagram = async () => {
+  const openX = async () => { if (!account?.x_username) { Alert.alert('X unavailable','X username not available'); return; } try { await Linking.openURL(account.x_url || `https://x.com/${encodeURIComponent(account.x_username)}/`); } catch { Alert.alert('Could not open X','The X profile could not be opened.'); } };\n\n  const openInstagram = async () => {
     if (!account) return;
-    if (!account.username?.trim()) {
-  Alert.alert(
-    'Username unavailable',
-    'This account does not have a username to open.'
-  );
-  return;
-}
+    if (!account.username?.trim()) { Alert.alert('Instagram unavailable','IG username not available'); return; }
 
 const outcome = await openProfile(account.username, {
       preferApp: settings.preferInstagramApp,
@@ -208,7 +202,7 @@ const outcome = await openProfile(account.username, {
           </View>
         )}
         <Text style={[styles.displayName, { color: colors.text }]} selectable accessibilityRole='header'>{account.display_name || account.full_name || 'Instagram account'}</Text>
-        <Text style={[styles.username, { color: colors.textSecondary }]} selectable>@{account.username}</Text>
+        <Text style={[styles.username, { color: colors.textSecondary }]} selectable>{account.username ? `IG: @${account.username}` : 'IG username not available'}</Text><Text style={[styles.username, { color: colors.textSecondary }]} selectable>{account.x_username ? `X: @${account.x_username}` : 'X username not available'}</Text>
         <View style={[styles.badge, { borderColor: statusColor }]} accessible accessibilityLabel={`Status ${STATUS_LABELS[account.status]}`}>
           <Text style={[styles.badgeText, { color: statusColor }]}>{STATUS_SYMBOLS[account.status]} {STATUS_LABELS[account.status].toUpperCase()}</Text>
         </View>
@@ -224,9 +218,7 @@ const outcome = await openProfile(account.username, {
 
       {(account.profile_image_uri || account.local_image_path || account.profile_image_url || account.image_url) ? <Pressable onPress={() => void saveToDevice()} disabled={busy} accessibilityRole='button' style={[styles.secondary, { backgroundColor: colors.surfaceAlt, opacity: busy ? 0.6 : 1 }]}><Text style={[styles.secondaryText, { color: colors.text }]}>Download Image to Device</Text></Pressable> : null}
 
-      <Pressable onPress={openInstagram} accessibilityRole='button' accessibilityLabel={`Open ${account.username} on Instagram`} style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}>
-        <Text style={styles.primaryText}>Open Instagram</Text>
-      </Pressable>
+      <Pressable onPress={openInstagram} accessibilityRole='button' accessibilityLabel='Open Instagram profile' style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}><Text style={styles.primaryText}>Open Instagram</Text></Pressable><Pressable onPress={openX} accessibilityRole='button' accessibilityLabel='Open X profile' style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}><Text style={styles.primaryText}>Open X</Text></Pressable>
 
       {message ? <Text style={[styles.message, { color: colors.textSecondary }]} accessibilityLiveRegion='polite'>{message}</Text> : null}
 
