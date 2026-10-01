@@ -225,14 +225,14 @@ const outcome = await openProfile(account.username, {
         username: account.username,
         displayName: account.display_name ?? account.full_name ?? '',
         fullName: account.full_name ?? account.display_name ?? '',
-        profileImageUrl: account.image_url ?? '',
-        profileImageUri: account.profile_image_uri ?? '',
+        profileImageUrl: account.image_url ?? account.profile_image_url ?? '',
+        profileImageUri: account.profile_image_uri ?? account.local_image_path ?? '',
       });
       await accountRepository.updateMetadata(account.id, {
         display_name: metadata.displayName ?? account.display_name ?? account.full_name ?? null,
-        full_name: metadata.fullName ?? metadata.displayName ?? account.full_name ?? account.display_name ?? null,
-        image_url: metadata.imageUrl ?? account.image_url ?? null,
-        profile_image_uri: metadata.profileImageUri ?? account.profile_image_uri ?? null,
+        full_name: metadata.fullName ?? account.full_name ?? account.display_name ?? null,
+        image_url: metadata.imageUrl ?? account.image_url ?? account.profile_image_url ?? null,
+        profile_image_uri: metadata.profileImageUri ?? account.profile_image_uri ?? account.local_image_path ?? null,
       });
       await show(account.id);
     } catch {
