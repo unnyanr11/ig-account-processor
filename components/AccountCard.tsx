@@ -19,12 +19,12 @@ function AccountCard({ account, colors, onPress }: Props) {
     <Pressable
       onPress={onPress}
       accessibilityRole='button'
-      accessibilityLabel={`${account.username}, status ${label}. Open details`}
+      accessibilityLabel={`${account.model_name || 'Model'}, ${account.username ? `Instagram @${account.username}` : 'IG username not available'}, ${account.x_username ? `X @${account.x_username}` : 'X username not available'}, status ${label}. Open details`}
       style={({ pressed }) => [styles.card, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.85 : 1 }]}
     >
       <View style={styles.top}>
-        {(account.profile_image_uri || account.image_url) ? (
-          <Image source={{ uri: account.profile_image_uri || account.image_url || undefined }} style={styles.avatar} />
+        {(account.profile_image_uri || account.local_image_path || account.image_url || account.profile_image_url) ? (
+          <Image source={{ uri: account.profile_image_uri || account.local_image_path || account.image_url || account.profile_image_url || undefined }} style={styles.avatar} />
         ) : (
           <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
             <Text style={[styles.avatarPlaceholderText, { color: colors.textMuted }]}>{(account.username?.[0] || account.model_name?.[0] || '?').toUpperCase()}</Text>
@@ -32,7 +32,7 @@ function AccountCard({ account, colors, onPress }: Props) {
         )}
         <View style={styles.identity}>
           <Text style={[styles.displayName, { color: colors.text }]} numberOfLines={1}>{account.display_name || account.full_name || 'Instagram account'}</Text>
-          <Text style={[styles.username, { color: colors.textSecondary }]} numberOfLines={1}>{account.username ? `@${account.username}` : 'Instagram unavailable'}</Text>
+          <Text style={[styles.username, { color: colors.textSecondary }]} numberOfLines={1}>{account.username ? `IG: @${account.username}` : 'IG username not available'}</Text><Text style={[styles.username, { color: colors.textSecondary }]} numberOfLines={1}>{account.x_username ? `X: @${account.x_username}` : 'X username not available'}</Text>
         </View>
         <View style={[styles.badge, { borderColor: color }]}>
           <Text style={[styles.badgeText, { color }]}>{STATUS_SYMBOLS[account.status]} {label}</Text>
