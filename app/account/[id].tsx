@@ -8,7 +8,7 @@ import type { List } from '../../types/list';
 import { toUserMessage } from '../../services/errors';
 import { openProfile } from '../../services/instagram';
 import { fetchProfileMetadata } from '../../services/profileImage';
-import { downloadImage } from '../../services/imageDownloadService';
+import { downloadImage, saveImageToDeviceStorage } from '../../services/imageDownloadService';
 import { statusLabel } from '../../utils/format';
 import { formatDateHuman, formatDateTimeHuman } from '../../utils/normalization';
 import { useSettings } from '../../utils/useSettings';
@@ -200,8 +200,8 @@ const outcome = await openProfile(account.username, {
       {screen}
 
       <View style={styles.headerBlock}>
-        {(account.profile_image_uri || account.image_url) ? (
-          <Image source={{ uri: account.profile_image_uri || account.image_url || undefined }} style={styles.avatar} />
+        {(account.profile_image_uri || account.local_image_path || account.image_url || account.profile_image_url) ? (
+          <Image source={{ uri: account.profile_image_uri || account.local_image_path || account.image_url || account.profile_image_url || undefined }} style={styles.avatar} />
         ) : (
           <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
             <Text style={[styles.avatarPlaceholderText, { color: colors.textMuted }]}>{(account.username?.[0] || '?').toUpperCase()}</Text>
