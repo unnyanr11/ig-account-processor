@@ -16,13 +16,13 @@ Supported: JSON, JSONL, NDJSON, CSV, TSV, XLSX, XLS, TXT, XML and HTML.
 
 The importer detects common JSON object-wrapped arrays (models, accounts, users, profiles, data, items, results, records, rows), flexible CSV headers, headerless delimited data, UTF-8 BOM, CRLF/LF, quoted cells and embedded commas.
 
-Known mappings include model name, Instagram username, Instagram URL, profile image, source and letter fields with common naming variants. Unknown fields remain in the original row.
+Known mappings include model name, letter, Instagram username/link, X username/link, TikTok username/link, Babepedia source and profile image fields with common naming variants. Unknown fields remain in the original row.
 
 Missing values such as N/A, NA, null, -, and empty strings are treated as missing where appropriate. Missing Instagram information does not discard the record.
 
 ## Identity and processing
 
-When present, normalized Instagram username is the strongest identity signal. @handles, profile URLs and common URL formatting variants normalize to the same lowercase username. Non-profile Instagram routes such as /explore, /reels, /p, /stories, /direct and /accounts are not treated as usernames.
+When present, normalized Instagram username is the strongest identity signal. @handles, profile URLs and common URL formatting variants normalize to the same lowercase username. Non-profile Instagram routes such as /explore, /reels, /p, /stories, /direct and /accounts are not treated as usernames. X/TikTok profile links are normalized to their corresponding handles and retained alongside Instagram data.
 
 Records without Instagram usernames receive a stable database ID and remain available for browsing, editing, lists, notes and export. The app never invents a username from a model name.
 
