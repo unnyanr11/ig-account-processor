@@ -109,6 +109,23 @@ export function insertMany(inputs: NewAccountInput[], onProgress?: (done: number
       await db.withExclusiveTransactionAsync(async (txn) => {
         for (const a of chunk) {
           try {
+            if (a.identity_key) {
+              const identityRow = await txn.getFirstAsync<{ id: number }>('SELECT id FROM accounts WHERE identity_key = ?', [a.identity_key]);
+              if (identityRow) {
+                if (a.username) {
+                  const conflict = await txn.getFirstAsync<{ id: number }>('SELECT id FROM accounts WHERE username = ? AND id <> ?', [a.username, identityRow.id]);
+                  if (conflict) throw new DatabaseError('Instagram username already belongs to another account');
+                }
+                await txn.runAsync(
+                  'UPDATE accounts SET username = ?, instagram_url = ?, x_username = ?, x_url = ?, model_name = ?, letter = ?, display_name = ?, full_name = ?, profile_image_url = ?, image_url = ?, profile_image_uri = COALESCE(?, profile_image_uri), local_image_path = COALESCE(?, local_image_path), source_url = ?, source_file_name = ?, source_file_type = ?, source_mime_type = ?, source_row = ?, source_import_id = ?, raw_data_json = ?, x_username = ?, x_url = ?, updated_at = ? WHERE id = ?',
+                  [a.username, a.instagram_url, a.x_username ?? null, a.x_url ?? null, a.model_name ?? null, a.letter ?? null, a.display_name ?? null, a.full_name ?? null, a.profile_image_url ?? null, a.image_url ?? null, a.profile_image_uri ?? null, a.local_image_path ?? null, a.source_url ?? null, a.source_file_name ?? null, a.source_file_type ?? null, a.source_mime_type ?? null, a.source_row ?? null, a.source_import_id ?? null, a.raw_data_json ?? null, a.x_username ?? null, a.x_url ?? null, a.updated_at ?? ts, identityRow.id],
+                );
+                const identityId = identityRow.id;
+                if (a.username) saved.set(a.username, identityId);
+                saved.set(a.identity_key, identityId);
+                continue;
+              }
+            }
             if (a.username) {
               await txn.runAsync(
                 'INSERT INTO accounts (username, instagram_url, x_username, x_url, identity_key, model_name, letter, display_name, full_name, profile_image_url, image_url, profile_image_uri, local_image_path, source_url, source_file_name, source_file_type, source_mime_type, source_row, source_import_id, raw_data_json, status, list_id, source, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(username) DO UPDATE SET instagram_url=excluded.instagram_url, x_username=excluded.x_username, x_url=excluded.x_url, identity_key=COALESCE(excluded.identity_key, accounts.identity_key), model_name=excluded.model_name, letter=excluded.letter, display_name=excluded.display_name, full_name=excluded.full_name, profile_image_url=excluded.profile_image_url, image_url=excluded.image_url, profile_image_uri=COALESCE(excluded.profile_image_uri, accounts.profile_image_uri), local_image_path=COALESCE(excluded.local_image_path, accounts.local_image_path), source_url=excluded.source_url, source_file_name=excluded.source_file_name, source_file_type=excluded.source_file_type, source_mime_type=excluded.source_mime_type, source_row=excluded.source_row, source_import_id=excluded.source_import_id, raw_data_json=excluded.raw_data_json, source=COALESCE(excluded.source, accounts.source), notes=COALESCE(excluded.notes, accounts.notes), updated_at=excluded.updated_at',
