@@ -102,7 +102,7 @@ export default function ExportScreen() {
         ))}
       </View>
       <Text style={[styles.note, { color: colors.textMuted }]}>
-        CSV and XLSX include username, instagram_url, status, list, source, notes, created_at and updated_at. TXT contains usernames only, one per line.
+        CSV and XLSX include Instagram and X usernames/links, model name, image paths, source and processing metadata. TXT contains available Instagram/X handles, one per line.
       </Text>
 
       <Text style={[styles.count, { color: colors.text }]} accessibilityLiveRegion='polite'>
