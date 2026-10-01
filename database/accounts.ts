@@ -105,57 +105,99 @@ export function applyUsernameChanges(changes: import('./interfaces').UsernameCha
 }
 
 
-export function insertMany(inputs: NewAccountInput[], onProgress?: (done: number, total: number) => void): Promise<Map<string, number>> {
+export function insertMany(
+  inputs: NewAccountInput[],
+  onProgress?: (done:number,total:number)=>void,
+  importId?: number|null,
+  usernameChanges: import('./interfaces').UsernameChangeMatch[] = [],
+): Promise<Map<string,number>> {
   return withDb('Failed to save accounts', async (db) => {
-    const saved = new Map<string, number>();
+    const saved = new Map<string,number>();
     const ts = nowIso();
-    for (let i = 0; i < inputs.length; i += CHUNK) {
-      const chunk = inputs.slice(i, i + CHUNK);
-      await db.withExclusiveTransactionAsync(async (txn) => {
-        for (const a of chunk) {
-          try {
-            if (a.identity_key) {
-              const identityRow = await txn.getFirstAsync<{ id: number }>('SELECT id FROM accounts WHERE identity_key = ?', [a.identity_key]);
-              if (identityRow) {
-                if (a.username) {
-                  const conflict = await txn.getFirstAsync<{ id: number }>('SELECT id FROM accounts WHERE username = ? AND id <> ?', [a.username, identityRow.id]);
-                  if (conflict) throw new DatabaseError('Instagram username already belongs to another account');
-                }
-                await txn.runAsync(
-                  'UPDATE accounts SET username = ?, instagram_url = ?, x_username = ?, x_url = ?, model_name = ?, letter = ?, display_name = ?, full_name = ?, profile_image_url = ?, image_url = ?, profile_image_uri = COALESCE(?, profile_image_uri), local_image_path = COALESCE(?, local_image_path), source_url = ?, source_file_name = ?, source_file_type = ?, source_mime_type = ?, source_row = ?, source_import_id = ?, raw_data_json = ?, updated_at = ? WHERE id = ?',
-                  [a.username, a.instagram_url, a.x_username ?? null, a.x_url ?? null, a.model_name ?? null, a.letter ?? null, a.display_name ?? null, a.full_name ?? null, a.profile_image_url ?? null, a.image_url ?? null, a.profile_image_uri ?? null, a.local_image_path ?? null, a.source_url ?? null, a.source_file_name ?? null, a.source_file_type ?? null, a.source_mime_type ?? null, a.source_row ?? null, a.source_import_id ?? null, a.raw_data_json ?? null, a.updated_at ?? ts, identityRow.id],
+
+    await db.withExclusiveTransactionAsync(async (txn) => {
+      // Apply detected renames inside the same transaction as the import.
+      for (const change of usernameChanges) {
+        const conflict = await txn.getFirstAsync<{id:number}>(
+          'SELECT id FROM accounts WHERE username = ? AND id <> ?',
+          [change.new_username, change.account_id],
+        );
+        if (conflict) throw new DatabaseError(`Instagram username already belongs to another account: @${change.new_username}`);
+        const current = await txn.getFirstAsync<{username:string}>(
+          'SELECT username FROM accounts WHERE id = ?',
+          [change.account_id],
+        );
+        if (!current || current.username === change.new_username) continue;
+        const changedAt = nowIso();
+        await txn.runAsync(
+          'UPDATE accounts SET username = ?, instagram_url = ?, updated_at = ? WHERE id = ?',
+          [change.new_username, `https://www.instagram.com/${encodeURIComponent(change.new_username)}/`, changedAt, change.account_id],
+        );
+        await txn.runAsync(
+          'INSERT INTO account_username_history(account_id,old_username,new_username,import_id,changed_at) VALUES(?,?,?,?,?)',
+          [change.account_id,current.username,change.new_username,importId ?? null,changedAt],
+        );
+      }
+
+      for (let i=0; i<inputs.length; i++) {
+        const a=inputs[i];
+        try {
+          let accountId:number|null=null;
+
+          if (a.identity_key) {
+            const identityRow=await txn.getFirstAsync<{id:number}>(
+              'SELECT id FROM accounts WHERE identity_key = ?',
+              [a.identity_key],
+            );
+            if (identityRow) {
+              if (a.username) {
+                const conflict=await txn.getFirstAsync<{id:number}>(
+                  'SELECT id FROM accounts WHERE username = ? AND id <> ?',
+                  [a.username,identityRow.id],
                 );
-                const identityId = identityRow.id;
-                if (a.username) saved.set(a.username, identityId);
-                saved.set(a.identity_key, identityId);
-                continue;
+                if (conflict) throw new DatabaseError('Instagram username already belongs to another account');
               }
-            }
-            if (a.username) {
               await txn.runAsync(
-                'INSERT INTO accounts (username, instagram_url, x_username, x_url, identity_key, model_name, letter, display_name, full_name, profile_image_url, image_url, profile_image_uri, local_image_path, source_url, source_file_name, source_file_type, source_mime_type, source_row, source_import_id, raw_data_json, status, list_id, source, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(username) DO UPDATE SET instagram_url=excluded.instagram_url, x_username=excluded.x_username, x_url=excluded.x_url, identity_key=COALESCE(excluded.identity_key, accounts.identity_key), model_name=excluded.model_name, letter=excluded.letter, display_name=excluded.display_name, full_name=excluded.full_name, profile_image_url=excluded.profile_image_url, image_url=excluded.image_url, profile_image_uri=COALESCE(excluded.profile_image_uri, accounts.profile_image_uri), local_image_path=COALESCE(excluded.local_image_path, accounts.local_image_path), source_url=excluded.source_url, source_file_name=excluded.source_file_name, source_file_type=excluded.source_file_type, source_mime_type=excluded.source_mime_type, source_row=excluded.source_row, source_import_id=excluded.source_import_id, raw_data_json=excluded.raw_data_json, source=COALESCE(excluded.source, accounts.source), notes=COALESCE(excluded.notes, accounts.notes), updated_at=excluded.updated_at',
-                [a.username, a.instagram_url, a.x_username ?? null, a.x_url ?? null, a.identity_key ?? null, a.model_name ?? null, a.letter ?? null, a.display_name ?? null, a.full_name ?? null, a.profile_image_url ?? null, a.image_url ?? null, a.profile_image_uri ?? null, a.local_image_path ?? null, a.source_url ?? null, a.source_file_name ?? null, a.source_file_type ?? null, a.source_mime_type ?? null, a.source_row ?? null, a.source_import_id ?? null, a.raw_data_json ?? null, 'NEW', a.list_id ?? null, a.source ?? null, a.notes ?? null, a.created_at ?? ts, a.updated_at ?? ts]
+                'UPDATE accounts SET username=?,instagram_url=?,x_username=?,x_url=?,model_name=?,letter=?,display_name=?,full_name=?,profile_image_url=?,image_url=?,profile_image_uri=COALESCE(?,profile_image_uri),local_image_path=COALESCE(?,local_image_path),source_url=?,source_file_name=?,source_file_type=?,source_mime_type=?,source_row=?,source_import_id=?,raw_data_json=?,updated_at=? WHERE id=?',
+                [a.username,a.instagram_url,a.x_username??null,a.x_url??null,a.model_name??null,a.letter??null,a.display_name??null,a.full_name??null,a.profile_image_url??null,a.image_url??null,a.profile_image_uri??null,a.local_image_path??null,a.source_url??null,a.source_file_name??null,a.source_file_type??null,a.source_mime_type??null,a.source_row??null,a.source_import_id??null,a.raw_data_json??null,a.updated_at??ts,identityRow.id],
               );
-            } else {
-              if (!a.identity_key) throw new DatabaseError('Imported record without Instagram needs a model/source identity');
-              await txn.runAsync(
-                'INSERT INTO accounts (username, instagram_url, x_username, x_url, identity_key, model_name, letter, display_name, full_name, profile_image_url, image_url, profile_image_uri, local_image_path, source_url, source_file_name, source_file_type, source_mime_type, source_row, source_import_id, raw_data_json, status, list_id, source, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(identity_key) DO UPDATE SET model_name=excluded.model_name, letter=excluded.letter, display_name=excluded.display_name, full_name=excluded.full_name, profile_image_url=excluded.profile_image_url, image_url=excluded.image_url, x_username=excluded.x_username, x_url=excluded.x_url, source_url=excluded.source_url, source_file_name=excluded.source_file_name, source_file_type=excluded.source_file_type, source_mime_type=excluded.source_mime_type, source_row=excluded.source_row, source_import_id=excluded.source_import_id, raw_data_json=excluded.raw_data_json, notes=COALESCE(excluded.notes, accounts.notes), updated_at=excluded.updated_at',
-                [null, null, a.x_username ?? null, a.x_url ?? null, a.identity_key, a.model_name ?? null, a.letter ?? null, a.display_name ?? null, a.full_name ?? null, a.profile_image_url ?? null, a.image_url ?? null, a.profile_image_uri ?? null, a.local_image_path ?? null, a.source_url ?? null, a.source_file_name ?? null, a.source_file_type ?? null, a.source_mime_type ?? null, a.source_row ?? null, a.source_import_id ?? null, a.raw_data_json ?? null, 'NEW', a.list_id ?? null, a.source ?? null, a.notes ?? null, a.created_at ?? ts, a.updated_at ?? ts]
-              );
+              accountId=identityRow.id;
             }
-            const row = a.username
-              ? await txn.getFirstAsync<{ id: number }>('SELECT id FROM accounts WHERE username = ?', [a.username])
-              : await txn.getFirstAsync<{ id: number }>('SELECT id FROM accounts WHERE identity_key = ?', [a.identity_key!]);
-            if (!row) throw new DatabaseError('Account was saved but could not be reloaded');
-            if (a.username) saved.set(a.username, row.id); if (a.identity_key) saved.set(a.identity_key, row.id);
-          } catch (error) {
-            const detail = error instanceof Error ? error.message : String(error);
-            throw new DatabaseError('Failed to save account' + (a.username ? ' @' + a.username : '') + ': ' + detail, error);
           }
+
+          if (accountId===null && a.username) {
+            await txn.runAsync(
+              'INSERT INTO accounts(username,instagram_url,x_username,x_url,identity_key,model_name,letter,display_name,full_name,profile_image_url,image_url,profile_image_uri,local_image_path,source_url,source_file_name,source_file_type,source_mime_type,source_row,source_import_id,raw_data_json,status,list_id,source,notes,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(username) DO UPDATE SET instagram_url=excluded.instagram_url,x_username=excluded.x_username,x_url=excluded.x_url,identity_key=COALESCE(excluded.identity_key,accounts.identity_key),model_name=excluded.model_name,letter=excluded.letter,display_name=excluded.display_name,full_name=excluded.full_name,profile_image_url=excluded.profile_image_url,image_url=excluded.image_url,profile_image_uri=COALESCE(excluded.profile_image_uri,accounts.profile_image_uri),local_image_path=COALESCE(excluded.local_image_path,accounts.local_image_path),source_url=excluded.source_url,source_file_name=excluded.source_file_name,source_file_type=excluded.source_file_type,source_mime_type=excluded.source_mime_type,source_row=excluded.source_row,source_import_id=excluded.source_import_id,raw_data_json=excluded.raw_data_json,source=COALESCE(excluded.source,accounts.source),notes=COALESCE(excluded.notes,accounts.notes),updated_at=excluded.updated_at',
+              [a.username,a.instagram_url,a.x_username??null,a.x_url??null,a.identity_key??null,a.model_name??null,a.letter??null,a.display_name??null,a.full_name??null,a.profile_image_url??null,a.image_url??null,a.profile_image_uri??null,a.local_image_path??null,a.source_url??null,a.source_file_name??null,a.source_file_type??null,a.source_mime_type??null,a.source_row??null,a.source_import_id??null,a.raw_data_json??null,'NEW',a.list_id??null,a.source??null,a.notes??null,a.created_at??ts,a.updated_at??ts],
+            );
+            const row=await txn.getFirstAsync<{id:number}>('SELECT id FROM accounts WHERE username=?',[a.username]);
+            accountId=row?.id??null;
+          }
+
+          if (accountId===null) {
+            if (!a.identity_key) throw new DatabaseError('Imported record without Instagram needs a model/source identity');
+            await txn.runAsync(
+              'INSERT INTO accounts(username,instagram_url,x_username,x_url,identity_key,model_name,letter,display_name,full_name,profile_image_url,image_url,profile_image_uri,local_image_path,source_url,source_file_name,source_file_type,source_mime_type,source_row,source_import_id,raw_data_json,status,list_id,source,notes,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(identity_key) DO UPDATE SET model_name=excluded.model_name,letter=excluded.letter,display_name=excluded.display_name,full_name=excluded.full_name,profile_image_url=excluded.profile_image_url,image_url=excluded.image_url,x_username=excluded.x_username,x_url=excluded.x_url,source_url=excluded.source_url,source_file_name=excluded.source_file_name,source_file_type=excluded.source_file_type,source_mime_type=excluded.source_mime_type,source_row=excluded.source_row,source_import_id=excluded.source_import_id,raw_data_json=excluded.raw_data_json,notes=COALESCE(excluded.notes,accounts.notes),updated_at=excluded.updated_at',
+              [null,null,a.x_username??null,a.x_url??null,a.identity_key,a.model_name??null,a.letter??null,a.display_name??null,a.full_name??null,a.profile_image_url??null,a.image_url??null,a.profile_image_uri??null,a.local_image_path??null,a.source_url??null,a.source_file_name??null,a.source_file_type??null,a.source_mime_type??null,a.source_row??null,a.source_import_id??null,a.raw_data_json??null,'NEW',a.list_id??null,a.source??null,a.notes??null,a.created_at??ts,a.updated_at??ts],
+            );
+            const row=await txn.getFirstAsync<{id:number}>('SELECT id FROM accounts WHERE identity_key=?',[a.identity_key]);
+            accountId=row?.id??null;
+          }
+
+          if (accountId===null) throw new DatabaseError('Account was saved but could not be reloaded');
+          if (a.username) saved.set(a.username,accountId);
+          if (a.identity_key) saved.set(a.identity_key,accountId);
+          if (importId) await txn.runAsync(
+            'INSERT OR REPLACE INTO app_import_accounts(import_id,account_id,source_row) VALUES(?,?,?)',
+            [importId,accountId,a.source_row??null],
+          );
+        } catch(error) {
+          const detail=error instanceof Error?error.message:String(error);
+          throw new DatabaseError('Failed to save account'+(a.username?' @'+a.username:'')+': '+detail,error);
         }
-      });
-      onProgress?.(Math.min(i + CHUNK, inputs.length), inputs.length);
-    }
+        onProgress?.(i+1,inputs.length);
+      }
+    });
     return saved;
   });
 }
