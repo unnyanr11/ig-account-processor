@@ -47,7 +47,7 @@ export function getIdsByUsernames(usernames: string[]): Promise<number[]> { retu
 
     const sourceMap=new Map<string,{id:number;username:string}[]>();
     const imageMap=new Map<string,{id:number;username:string}[]>();
-    const nameMap=new Map<string,{id:number;username:string}[]>();
+    const nameMap=new Map<string,{id:number;username:string}[]>(); const nameOnlyMap=new Map<string,{id:number;username:string}[]>();
     const sourceKeys=unique(pending.map(c=>c.source_url||''));
     const imageKeys=unique(pending.map(c=>c.profile_image_url||''));
     const nameKeys=unique(pending.map(c=>`${(c.model_name||'').trim().toLowerCase()}|${(c.letter||'').trim().toLowerCase()}`));
@@ -69,7 +69,7 @@ export function getIdsByUsernames(usernames: string[]): Promise<number[]> { retu
       if(!chunk.length) continue;
       const marks=chunk.map(()=>'?').join(',');
       const rows=await db.getAllAsync<{id:number;username:string;model_name:string|null;letter:string|null}>(`SELECT id,username,model_name,letter FROM accounts WHERE lower(trim(model_name)) IN (${marks})`,chunk);
-      rows.forEach(r=>{const k=`${(r.model_name||'').trim().toLowerCase()}|${(r.letter||'').trim().toLowerCase()}`;const a=nameMap.get(k)||[];a.push({id:r.id,username:r.username});nameMap.set(k,a);});
+      rows.forEach(r=>{const n=(r.model_name||'').trim().toLowerCase();const k=`${n}|${(r.letter||'').trim().toLowerCase()}`;const a=nameMap.get(k)||[];a.push({id:r.id,username:r.username});nameMap.set(k,a);const b=nameOnlyMap.get(n)||[];b.push({id:r.id,username:r.username});nameOnlyMap.set(n,b);});
     }
 
     for(const c of pending){
@@ -80,7 +80,7 @@ export function getIdsByUsernames(usernames: string[]): Promise<number[]> { retu
       const nameKey=`${(c.model_name||'').trim().toLowerCase()}|${(c.letter||'').trim().toLowerCase()}`;
       const sourceMatches=source?sourceMap.get(source)||[]:[];
       const imageMatches=image?imageMap.get(image)||[]:[];
-      const nameMatches=c.model_name?.trim()?(nameMap.get(nameKey)||[]):[];
+      const nameMatches=c.model_name?.trim()?(c.letter?.trim()?(nameMap.get(nameKey)||[]):(nameOnlyMap.get((c.model_name||'').trim().toLowerCase())||[])):[];
       if(sourceMatches.length===1) row=sourceMatches[0];
       else if(imageMatches.length===1) row=imageMatches[0];
       else if(nameMatches.length===1) row=nameMatches[0];
