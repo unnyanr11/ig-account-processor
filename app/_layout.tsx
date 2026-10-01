@@ -28,9 +28,12 @@ export default function RootLayout() {
     return (
       <View style={[styles.fatal, { backgroundColor: colors.background }]}>
         {statusBar}
-        <Text style={[styles.fatalTitle, { color: colors.text }]}>Something went wrong</Text>
+        <Text style={[styles.fatalTitle, { color: colors.text }]}>Database unavailable</Text>
         <Text style={[styles.fatalText, { color: colors.textSecondary }]}>
-          Your data could not be opened. Please close and reopen the app.
+          The local database could not be opened. You can continue to the app and retry the operation.
+        </Text>
+        <Text style={[styles.fatalText, { color: colors.textMuted }]}>
+          Close and reopen the app after installing the latest build if this message persists.
         </Text>
       </View>
     );
