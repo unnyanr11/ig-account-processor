@@ -232,6 +232,15 @@ export default function QueueScreen() {
     catch { Alert.alert('Could not open X', 'The X profile could not be opened.'); }
   };
 
+  const handleOpenTikTok = async () => {
+    if (!account?.tiktok_username?.trim()) {
+      Alert.alert('TikTok unavailable', 'TikTok username not available');
+      return;
+    }
+    try { await Linking.openURL(account.tiktok_url || `https://www.tiktok.com/@${encodeURIComponent(account.tiktok_username)}`); }
+    catch { Alert.alert('Could not open TikTok', 'The TikTok profile could not be opened.'); }
+  };
+
   const refreshIdentity = useCallback(async (force = false) => {
     if (!account || busy) return;
     const needsIdentity = !account.display_name && !account.full_name;
@@ -328,7 +337,7 @@ export default function QueueScreen() {
           <Text style={[styles.displayName, { color: colors.text }]} accessibilityRole='header' numberOfLines={2}>
             {account.model_name || account.display_name || account.full_name || 'Unnamed model'}
           </Text>
-          <Text style={[styles.username, { color: colors.textSecondary }]} selectable>{account.username ? `IG: @${account.username}` : 'IG username not available'}</Text><Text style={[styles.username, { color: colors.textSecondary }]} selectable>{account.x_username ? `X: @${account.x_username}` : 'X username not available'}</Text>
+          <Text style={[styles.username, { color: colors.textSecondary }]} selectable>{account.username ? `IG: @${account.username}` : 'IG username not available'}</Text><Text style={[styles.username, { color: colors.textSecondary }]} selectable>{account.x_username ? `X: @${account.x_username}` : 'X username not available'}</Text><Text style={[styles.username, { color: colors.textSecondary }]} selectable>{account.tiktok_username ? `TikTok: @${account.tiktok_username}` : 'TikTok username not available'}</Text>
           <View style={[styles.badge, { borderColor: statusColor }]} accessible accessibilityLabel={`Current status ${STATUS_LABELS[account.status]}`}>
             <Text style={[styles.badgeText, { color: statusColor }]}>{STATUS_SYMBOLS[account.status]} {STATUS_LABELS[account.status].toUpperCase()}</Text>
           </View>
@@ -349,7 +358,7 @@ export default function QueueScreen() {
         ) : null}
 
         <Pressable onPress={handleOpen} accessibilityRole='button' accessibilityLabel='Open Instagram profile' style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}><Text style={styles.primaryText}>Open Instagram</Text></Pressable>
-        <Pressable onPress={handleOpenX} accessibilityRole='button' accessibilityLabel='Open X profile' style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}><Text style={styles.primaryText}>Open X</Text></Pressable>
+        <Pressable onPress={handleOpenX} accessibilityRole='button' accessibilityLabel='Open X profile' style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}><Text style={styles.primaryText}>Open X</Text></Pressable><Pressable onPress={handleOpenTikTok} accessibilityRole='button' accessibilityLabel='Open TikTok profile' style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}><Text style={styles.primaryText}>Open TikTok</Text></Pressable>
 
         {account.source_url ? (
           <Pressable onPress={async () => { try { await Linking.openURL(account.source_url!); } catch { Alert.alert('Could not open source', 'The source link could not be opened.'); } }} accessibilityRole='link' accessibilityLabel='Open source link' style={[styles.secondaryAction, { backgroundColor: colors.surfaceAlt }]}>
