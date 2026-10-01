@@ -11,6 +11,7 @@ export interface BackupData {
   app_imports: BackupRow[];
   app_import_accounts: BackupRow[];
   account_username_history: BackupRow[];
+  settings: BackupRow[];
 }
 
 export interface BackupFile {
