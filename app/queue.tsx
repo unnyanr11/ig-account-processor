@@ -6,6 +6,7 @@ import { AccountStatus, AccountWithList, ACCOUNT_STATUSES, STATUS_COLORS, STATUS
 import { toUserMessage } from '../services/errors';
 import { openProfile } from '../services/instagram';
 import { fetchProfileMetadata } from '../services/profileImage';
+import { downloadImage } from '../services/imageDownloadService';
 import type { QueueMode } from '../services/settingsService';
 import { ThemeColors } from '../utils/theme';
 import { useSettings } from '../utils/useSettings';
@@ -221,17 +222,26 @@ const outcome = await openProfile(account.username, {
 
     setBusy(true);
     try {
+      const remoteImage = account.image_url ?? account.profile_image_url ?? null;
+      if (remoteImage && !account.profile_image_uri && !account.local_image_path) {
+        const localUri = await downloadImage(account.id, remoteImage);
+        if (localUri) {
+          await show(account.id);
+          return;
+        }
+      }
+
       const metadata = await fetchProfileMetadata({
         username: account.username,
         displayName: account.display_name ?? account.full_name ?? '',
         fullName: account.full_name ?? account.display_name ?? '',
-        profileImageUrl: account.image_url ?? account.profile_image_url ?? '',
+        profileImageUrl: remoteImage ?? '',
         profileImageUri: account.profile_image_uri ?? account.local_image_path ?? '',
       });
       await accountRepository.updateMetadata(account.id, {
         display_name: metadata.displayName ?? account.display_name ?? account.full_name ?? null,
         full_name: metadata.fullName ?? account.full_name ?? account.display_name ?? null,
-        image_url: metadata.imageUrl ?? account.image_url ?? account.profile_image_url ?? null,
+        image_url: metadata.imageUrl ?? remoteImage ?? null,
         profile_image_uri: metadata.profileImageUri ?? account.profile_image_uri ?? account.local_image_path ?? null,
       });
       await show(account.id);
