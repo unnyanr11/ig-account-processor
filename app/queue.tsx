@@ -113,13 +113,7 @@ export default function QueueScreen() {
           : (await accountRepository.getFirstId({ ...scope, status: AccountStatus.NEW })) ?? (await accountRepository.getFirstId(scope));
       }
       if (id === null) setPhase('empty');
-      else {
-        const candidate=await accountRepository.getById(id);
-        const inScope=candidate ? await accountRepository.count({...modeFilter, search:undefined}) : 0;
-        const validStart=params.startId ? await accountRepository.getAdjacentId(modeFilter,id,'next') : null;
-        if(params.startId && inScope===0 && validStart===null) await show(id);
-        else await show(id);
-      }
+      else await show(id);
     });
     // Runs on first load and on retry only; changing the mode must not move the current account.
     // eslint-disable-next-line react-hooks/exhaustive-deps
