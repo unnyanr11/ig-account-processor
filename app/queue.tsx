@@ -6,7 +6,7 @@ import { AccountStatus, AccountWithList, ACCOUNT_STATUSES, STATUS_COLORS, STATUS
 import { toUserMessage } from '../services/errors';
 import { openProfile } from '../services/instagram';
 import { fetchProfileMetadata } from '../services/profileImage';
-import { downloadImage } from '../services/imageDownloadService';
+import { downloadImage, saveImageToDeviceStorage } from '../services/imageDownloadService';
 import type { QueueMode } from '../services/settingsService';
 import { ThemeColors } from '../utils/theme';
 import { useSettings } from '../utils/useSettings';
@@ -197,6 +197,20 @@ export default function QueueScreen() {
     }
   }, [undo, busy, clearUndo, show]);
 
+  const saveToDevice = async () => {
+    if (!account) return;
+    setBusy(true);
+    try {
+      const remote = account.image_url ?? account.profile_image_url ?? null;
+      const uri = await saveImageToDeviceStorage(account.id, remote, account.profile_image_uri ?? account.local_image_path ?? null);
+      setNotice(uri ? 'Image saved to your Download folder.' : 'Image was not saved.');
+    } catch {
+      setNotice('Could not save the image to device storage.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleOpen = async () => {
     if (!account) return;
     if (!account.username?.trim()) {
@@ -321,6 +335,12 @@ const outcome = await openProfile(account.username, {
         {(!(account.display_name || account.full_name) || !(account.profile_image_uri || account.image_url)) ? (
           <Pressable onPress={() => void refreshIdentity(true)} accessibilityRole='button' style={[styles.secondaryAction, { backgroundColor: colors.surfaceAlt }]}>
             <Text style={[styles.secondaryActionText, { color: colors.text }]}>Refresh profile info</Text>
+          </Pressable>
+        ) : null}
+
+        {(account.profile_image_uri || account.local_image_path || account.image_url || account.profile_image_url) ? (
+          <Pressable onPress={() => void saveToDevice()} disabled={busy} accessibilityRole='button' style={[styles.secondaryAction, { backgroundColor: colors.surfaceAlt, opacity: busy ? 0.6 : 1 }]}>
+            <Text style={[styles.secondaryActionText, { color: colors.text }]}>Download Image to Device</Text>
           </Pressable>
         ) : null}
 
