@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AccountWithList, STATUS_COLORS, STATUS_LABELS, STATUS_SYMBOLS } from '../types/account';
 import { formatDateHuman } from '../utils/normalization';
 import { ThemeColors } from '../utils/theme';
