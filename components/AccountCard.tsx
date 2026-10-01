@@ -31,7 +31,7 @@ function AccountCard({ account, colors, onPress }: Props) {
           </View>
         )}
         <View style={styles.identity}>
-          <Text style={[styles.displayName, { color: colors.text }]} numberOfLines={1}>{account.display_name || account.full_name || 'Instagram account'}</Text>
+          <Text style={[styles.displayName, { color: colors.text }]} numberOfLines={1}>{account.model_name || account.display_name || account.full_name || 'Unnamed model'}</Text>
           <Text style={[styles.username, { color: colors.textSecondary }]} numberOfLines={1}>{account.username ? `IG: @${account.username}` : 'IG username not available'}</Text><Text style={[styles.username, { color: colors.textSecondary }]} numberOfLines={1}>{account.x_username ? `X: @${account.x_username}` : 'X username not available'}</Text>
         </View>
         <View style={[styles.badge, { borderColor: color }]}>
