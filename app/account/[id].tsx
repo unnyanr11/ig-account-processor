@@ -128,7 +128,9 @@ export default function AccountDetailsScreen() {
     if (!uri) throw new Error('The image was not saved. Choose a storage folder and try again.');
   }, 'Image saved to your Download folder');
 
-  const openX = async () => { if (!account?.x_username) { Alert.alert('X unavailable','X username not available'); return; } try { await Linking.openURL(account.x_url || `https://x.com/${encodeURIComponent(account.x_username)}/`); } catch { Alert.alert('Could not open X','The X profile could not be opened.'); } };\n\n  const openInstagram = async () => {
+  const openX = async () => { if (!account?.x_username) { Alert.alert('X unavailable','X username not available'); return; } try { await Linking.openURL(account.x_url || `https://x.com/${encodeURIComponent(account.x_username)}/`); } catch { Alert.alert('Could not open X','The X profile could not be opened.'); } };
+
+  const openInstagram = async () => {
     if (!account) return;
     if (!account.username?.trim()) { Alert.alert('Instagram unavailable','IG username not available'); return; }
 
