@@ -32,54 +32,59 @@ export function getIdsByUsernames(usernames: string[]): Promise<number[]> { retu
   return withDb('Failed to detect username changes', async (db) => {
     const matches: import('./interfaces').UsernameChangeMatch[] = [];
     const seenAccounts = new Set<number>();
+    const pending = candidates.filter(c => c.username);
 
-    for (const c of candidates) {
-      if (!c.username) continue;
+    const unique = (values: string[]) => Array.from(new Set(values.map(v => v.trim()).filter(Boolean)));
+    const chunked = <T,>(values:T[], size:number):T[][] => { const out:T[][]=[]; for(let i=0;i<values.length;i+=size) out.push(values.slice(i,i+size)); return out; };
 
-      const exact = await db.getFirstAsync<{ id:number; username:string }>(
-        'SELECT id, username FROM accounts WHERE username = ?',
-        [c.username]
-      );
-      if (exact) continue;
+    const exactNames = unique(pending.map(c => c.username));
+    const existing = new Set<string>();
+    for (const chunk of chunked(exactNames, CHUNK)) {
+      const marks=chunk.map(()=>'?').join(',');
+      const rows=await db.getAllAsync<{username:string}>(`SELECT username FROM accounts WHERE username IN (${marks})`,chunk);
+      rows.forEach(r=>existing.add(r.username));
+    }
 
-      let row: {id:number; username:string}|null = null;
+    const sourceMap=new Map<string,{id:number;username:string}[]>();
+    const imageMap=new Map<string,{id:number;username:string}[]>();
+    const nameMap=new Map<string,{id:number;username:string}[]>();
+    const sourceKeys=unique(pending.map(c=>c.source_url||''));
+    const imageKeys=unique(pending.map(c=>c.profile_image_url||''));
+    const nameKeys=unique(pending.map(c=>`${(c.model_name||'').trim().toLowerCase()}|${(c.letter||'').trim().toLowerCase()}`));
 
-      // Source URL is useful as an identity key, but only when it uniquely identifies one account.
-      if (c.source_url?.trim()) {
-        const sourceMatches = await db.getAllAsync<{id:number;username:string}>(
-          'SELECT id, username FROM accounts WHERE lower(trim(source_url)) = lower(trim(?))',
-          [c.source_url.trim()]
-        );
-        if (sourceMatches.length === 1) row = sourceMatches[0];
-      }
+    for(const chunk of chunked(sourceKeys,CHUNK)){
+      if(!chunk.length) continue;
+      const marks=chunk.map(()=>'?').join(',');
+      const rows=await db.getAllAsync<{id:number;username:string;source_url:string|null}>(`SELECT id,username,source_url FROM accounts WHERE source_url IS NOT NULL AND lower(trim(source_url)) IN (${marks})`,chunk.map(x=>x.toLowerCase()));
+      rows.forEach(r=>{const k=(r.source_url||'').trim().toLowerCase();const a=sourceMap.get(k)||[];a.push(r);sourceMap.set(k,a);});
+    }
+    for(const chunk of chunked(imageKeys,CHUNK)){
+      if(!chunk.length) continue;
+      const marks=chunk.map(()=>'?').join(',');
+      const rows=await db.getAllAsync<{id:number;username:string;profile_image_url:string|null;image_url:string|null}>(`SELECT id,username,profile_image_url,image_url FROM accounts WHERE lower(trim(profile_image_url)) IN (${marks}) OR lower(trim(image_url)) IN (${marks})`,[...chunk.map(x=>x.toLowerCase()),...chunk.map(x=>x.toLowerCase())]);
+      rows.forEach(r=>{for(const v of [r.profile_image_url,r.image_url]){const k=(v||'').trim().toLowerCase();if(!k)continue;const a=imageMap.get(k)||[];if(!a.some(x=>x.id===r.id))a.push({id:r.id,username:r.username});imageMap.set(k,a);}});
+    }
+    const nameParts=unique(pending.filter(c=>c.model_name?.trim()).map(c=>(c.model_name||'').trim().toLowerCase()));
+    for(const chunk of chunked(nameParts,CHUNK)){
+      if(!chunk.length) continue;
+      const marks=chunk.map(()=>'?').join(',');
+      const rows=await db.getAllAsync<{id:number;username:string;model_name:string|null;letter:string|null}>(`SELECT id,username,model_name,letter FROM accounts WHERE lower(trim(model_name)) IN (${marks})`,chunk);
+      rows.forEach(r=>{const k=`${(r.model_name||'').trim().toLowerCase()}|${(r.letter||'').trim().toLowerCase()}`;const a=nameMap.get(k)||[];a.push({id:r.id,username:r.username});nameMap.set(k,a);});
+    }
 
-      // Image URL can identify a renamed account only when it is unique in the database.
-      if (!row && c.profile_image_url?.trim()) {
-        const imageMatches = await db.getAllAsync<{id:number;username:string}>(
-          'SELECT DISTINCT id, username FROM accounts WHERE lower(trim(profile_image_url)) = lower(trim(?)) OR lower(trim(image_url)) = lower(trim(?))',
-          [c.profile_image_url.trim(), c.profile_image_url.trim()]
-        );
-        if (imageMatches.length === 1) row = imageMatches[0];
-      }
-
-      // Finally use model identity, requiring uniqueness to avoid accidental merges.
-      if (!row && c.model_name?.trim()) {
-        const candidatesByName = c.letter?.trim()
-          ? await db.getAllAsync<{id:number;username:string}>(
-              'SELECT id, username FROM accounts WHERE lower(trim(model_name)) = lower(trim(?)) AND lower(trim(letter)) = lower(trim(?))',
-              [c.model_name.trim(), c.letter.trim()]
-            )
-          : await db.getAllAsync<{id:number;username:string}>(
-              'SELECT id, username FROM accounts WHERE lower(trim(model_name)) = lower(trim(?))',
-              [c.model_name.trim()]
-            );
-        if (candidatesByName.length === 1) row = candidatesByName[0];
-      }
-
-      if (row && row.username && row.username !== c.username && !seenAccounts.has(row.id)) {
-        matches.push({account_id:row.id,old_username:row.username,new_username:c.username});
-        seenAccounts.add(row.id);
-      }
+    for(const c of pending){
+      if(existing.has(c.username)) continue;
+      let row:{id:number;username:string}|null=null;
+      const source=(c.source_url||'').trim().toLowerCase();
+      const image=(c.profile_image_url||'').trim().toLowerCase();
+      const nameKey=`${(c.model_name||'').trim().toLowerCase()}|${(c.letter||'').trim().toLowerCase()}`;
+      const sourceMatches=source?sourceMap.get(source)||[]:[];
+      const imageMatches=image?imageMap.get(image)||[]:[];
+      const nameMatches=c.model_name?.trim()?(nameMap.get(nameKey)||[]):[];
+      if(sourceMatches.length===1) row=sourceMatches[0];
+      else if(imageMatches.length===1) row=imageMatches[0];
+      else if(nameMatches.length===1) row=nameMatches[0];
+      if(row&&row.username&&row.username!==c.username&&!seenAccounts.has(row.id)){matches.push({account_id:row.id,old_username:row.username,new_username:c.username});seenAccounts.add(row.id);}
     }
     return matches;
   });
