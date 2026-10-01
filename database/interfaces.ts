@@ -10,6 +10,8 @@ export interface NewAccountInput {
   instagram_url: string | null;
   x_username?: string | null;
   x_url?: string | null;
+  tiktok_username?: string | null;
+  tiktok_url?: string | null;
   identity_key?: string | null;
   model_name?: string | null;
   letter?: string | null;
@@ -32,7 +34,7 @@ export interface NewAccountInput {
   created_at?: string;
   updated_at?: string;
 }
-export interface AccountMetadataUpdate { x_username?: string | null; x_url?: string | null; display_name?: string | null; full_name?: string | null; profile_image_url?: string | null; image_url?: string | null; profile_image_uri?: string | null; }
+export interface AccountMetadataUpdate { x_username?: string | null; x_url?: string | null; tiktok_username?: string | null; tiktok_url?: string | null; display_name?: string | null; full_name?: string | null; profile_image_url?: string | null; image_url?: string | null; profile_image_uri?: string | null; }
 export interface StatusCounts { total: number; byStatus: Record<AccountStatus, number>; }
 export type Direction = 'next' | 'prev';
 export interface AccountRepository {
