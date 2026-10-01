@@ -68,7 +68,7 @@ export default function AccountDetailsScreen() {
 
   useEffect(() => {
     if (phase !== 'ready' || !account) return;
-    if ((account.display_name || account.full_name) && (account.profile_image_uri || account.image_url)) return;
+    if ((account.model_name || account.display_name || account.full_name) && (account.profile_image_uri || account.local_image_path || account.image_url || account.profile_image_url)) return;
     void (async () => {
       try {
         const metadata = await fetchProfileMetadata({
@@ -164,7 +164,7 @@ const outcome = await openProfile(account.username, {
     });
   }, 'Profile info refreshed');
 
-  const screen = <Stack.Screen options={{ title: account ? `@${account.username}` : 'Account' }} />;
+  const screen = <Stack.Screen options={{ title: account ? (account.username ? `@${account.username}` : (account.model_name || 'Account')) : 'Account' }} />;
 
   if (phase === 'loading') {
     return (
@@ -201,7 +201,7 @@ const outcome = await openProfile(account.username, {
             <Text style={[styles.avatarPlaceholderText, { color: colors.textMuted }]}>{(account.username?.[0] || '?').toUpperCase()}</Text>
           </View>
         )}
-        <Text style={[styles.displayName, { color: colors.text }]} selectable accessibilityRole='header'>{account.display_name || account.full_name || 'Instagram account'}</Text>
+        <Text style={[styles.displayName, { color: colors.text }]} selectable accessibilityRole='header'>{account.model_name || account.display_name || account.full_name || 'Unnamed model'}</Text>
         <Text style={[styles.username, { color: colors.textSecondary }]} selectable>{account.username ? `IG: @${account.username}` : 'IG username not available'}</Text><Text style={[styles.username, { color: colors.textSecondary }]} selectable>{account.x_username ? `X: @${account.x_username}` : 'X username not available'}</Text>
         <View style={[styles.badge, { borderColor: statusColor }]} accessible accessibilityLabel={`Status ${STATUS_LABELS[account.status]}`}>
           <Text style={[styles.badgeText, { color: statusColor }]}>{STATUS_SYMBOLS[account.status]} {STATUS_LABELS[account.status].toUpperCase()}</Text>
