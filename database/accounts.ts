@@ -197,7 +197,7 @@ export function insertMany(
             );
             const row=await txn.getFirstAsync<{id:number}>('SELECT id FROM accounts WHERE identity_key=?',[a.identity_key]);
             accountId=row?.id??null;
-            if(accountId!==null)createdByImport=1;
+            if(accountId!==null&&!previousAccountJson)createdByImport=1;
           }
 
           if (accountId===null) throw new DatabaseError('Account was saved but could not be reloaded');
