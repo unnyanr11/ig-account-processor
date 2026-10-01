@@ -6,8 +6,11 @@ export interface AccountFilters { status?: AccountStatus; listId?: number | null
 export interface UsernameChangeCandidate { username:string; model_name?:string|null; letter?:string|null; source_url?:string|null; profile_image_url?:string|null; }
 export interface UsernameChangeMatch { account_id:number; old_username:string; new_username:string; }
 export interface NewAccountInput {
-  username: string;
+  username: string | null;
   instagram_url: string | null;
+  x_username?: string | null;
+  x_url?: string | null;
+  identity_key?: string | null;
   model_name?: string | null;
   letter?: string | null;
   display_name?: string | null;
@@ -29,7 +32,7 @@ export interface NewAccountInput {
   created_at?: string;
   updated_at?: string;
 }
-export interface AccountMetadataUpdate { display_name?: string | null; full_name?: string | null; profile_image_url?: string | null; image_url?: string | null; profile_image_uri?: string | null; }
+export interface AccountMetadataUpdate { x_username?: string | null; x_url?: string | null; display_name?: string | null; full_name?: string | null; profile_image_url?: string | null; image_url?: string | null; profile_image_uri?: string | null; }
 export interface StatusCounts { total: number; byStatus: Record<AccountStatus, number>; }
 export type Direction = 'next' | 'prev';
 export interface AccountRepository {
