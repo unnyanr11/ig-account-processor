@@ -202,7 +202,7 @@ const outcome = await openProfile(account.username, {
 
       <View style={styles.headerBlock}>
         {(account.profile_image_uri || account.local_image_path || account.image_url || account.profile_image_url) ? (
-          <Image source={{ uri: account.profile_image_uri || account.local_image_path || account.image_url || account.profile_image_url || undefined }} style={styles.avatar} />
+          <FullScreenImage uri={account.profile_image_uri || account.local_image_path || account.image_url || account.profile_image_url} size={120} textColor={colors.text} />
         ) : (
           <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
             <Text style={[styles.avatarPlaceholderText, { color: colors.textMuted }]}>{(account.username?.[0] || '?').toUpperCase()}</Text>
