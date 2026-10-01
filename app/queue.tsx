@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { accountRepository, type AccountFilters } from '../database';
 import { AccountStatus, AccountWithList, ACCOUNT_STATUSES, STATUS_COLORS, STATUS_LABELS, STATUS_SYMBOLS } from '../types/account';
@@ -228,7 +228,6 @@ export default function QueueScreen() {
       Alert.alert('X unavailable', 'X username not available');
       return;
     }
-    const { Linking } = await import('react-native');
     try { await Linking.openURL(account.x_url || `https://x.com/${encodeURIComponent(account.x_username)}/`); }
     catch { Alert.alert('Could not open X', 'The X profile could not be opened.'); }
   };
@@ -327,7 +326,7 @@ export default function QueueScreen() {
             </View>
           )}
           <Text style={[styles.displayName, { color: colors.text }]} accessibilityRole='header' numberOfLines={2}>
-            {account.display_name || account.full_name || 'Instagram account'}
+            {account.model_name || account.display_name || account.full_name || 'Unnamed model'}
           </Text>
           <Text style={[styles.username, { color: colors.textSecondary }]} selectable>{account.username ? `IG: @${account.username}` : 'IG username not available'}</Text><Text style={[styles.username, { color: colors.textSecondary }]} selectable>{account.x_username ? `X: @${account.x_username}` : 'X username not available'}</Text>
           <View style={[styles.badge, { borderColor: statusColor }]} accessible accessibilityLabel={`Current status ${STATUS_LABELS[account.status]}`}>
@@ -349,7 +348,7 @@ export default function QueueScreen() {
           </Pressable>
         ) : null}
 
-        <Pressable onPress={handleOpen} accessibilityRole='button' accessibilityLabel='Open Instagram profile' style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}><Text style={styles.primaryText}>Open Instagram</Text></Pressable><Pressable onPress={handleOpenX} accessibilityRole='button' accessibilityLabel='Open X profile' style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}><Text style={styles.primaryText}>Open X</Text></Pressable>{false&&<Pressable>
+        <Pressable onPress={handleOpen} accessibilityRole='button' accessibilityLabel='Open Instagram profile' style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}><Text style={styles.primaryText}>Open Instagram</Text></Pressable><Pressable onPress={handleOpenX} accessibilityRole='button' accessibilityLabel='Open X profile' style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}><Text style={styles.primaryText}>Open X</Text></Pressable>
           <Text style={styles.primaryText}>Open Instagram</Text>
         </Pressable>
 
