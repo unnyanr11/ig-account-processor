@@ -128,7 +128,9 @@ export default function AccountDetailsScreen() {
     if (!uri) throw new Error('The image was not saved. Choose a storage folder and try again.');
   }, 'Image saved to your Download folder');
 
-  const openSource = async () => { if (!account?.source_url) { Alert.alert('Source unavailable','No source link is available.'); return; } try { await Linking.openURL(account.source_url); } catch { Alert.alert('Could not open source','The source link could not be opened.'); } };\n\n  const openX = async () => { if (!account?.x_username) { Alert.alert('X unavailable','X username not available'); return; } try { await Linking.openURL(account.x_url || `https://x.com/${encodeURIComponent(account.x_username)}/`); } catch { Alert.alert('Could not open X','The X profile could not be opened.'); } };
+  const openSource = async () => { if (!account?.source_url) { Alert.alert('Source unavailable','No source link is available.'); return; } try { await Linking.openURL(account.source_url); } catch { Alert.alert('Could not open source','The source link could not be opened.'); } };
+
+  const openX = async () => { if (!account?.x_username) { Alert.alert('X unavailable','X username not available'); return; } try { await Linking.openURL(account.x_url || `https://x.com/${encodeURIComponent(account.x_username)}/`); } catch { Alert.alert('Could not open X','The X profile could not be opened.'); } };
 
   const openInstagram = async () => {
     if (!account) return;
