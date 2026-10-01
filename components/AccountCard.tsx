@@ -3,6 +3,7 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { AccountWithList, STATUS_COLORS, STATUS_LABELS, STATUS_SYMBOLS } from '../types/account';
 import { formatDateHuman } from '../utils/normalization';
 import { ThemeColors } from '../utils/theme';
+import FullScreenImage from './FullScreenImage';
 
 interface Props {
   account: AccountWithList;
@@ -24,7 +25,7 @@ function AccountCard({ account, colors, onPress }: Props) {
     >
       <View style={styles.top}>
         {(account.profile_image_uri || account.local_image_path || account.image_url || account.profile_image_url) ? (
-          <Image source={{ uri: account.profile_image_uri || account.local_image_path || account.image_url || account.profile_image_url || undefined }} style={styles.avatar} />
+          <FullScreenImage uri={account.profile_image_uri || account.local_image_path || account.image_url || account.profile_image_url} size={50} textColor={colors.text} />
         ) : (
           <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
             <Text style={[styles.avatarPlaceholderText, { color: colors.textMuted }]}>{(account.username?.[0] || account.model_name?.[0] || '?').toUpperCase()}</Text>
