@@ -90,7 +90,7 @@ export default function QueueScreen() {
       accountRepository.getById(id),
       accountRepository.getPosition(scope, id),
       accountRepository.count(scope),
-      accountRepository.count({ ...scope, status: AccountStatus.NEW }),
+      accountRepository.count(modeFilter),
     ]);
     if (!found) {
       setPhase('empty');
