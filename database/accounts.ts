@@ -32,24 +32,37 @@ export function getIdsByUsernames(usernames: string[]): Promise<number[]> { retu
   return withDb('Failed to detect username changes', async (db) => {
     const matches: import('./interfaces').UsernameChangeMatch[] = [];
     const seenAccounts = new Set<number>();
+
     for (const c of candidates) {
       if (!c.username) continue;
-      const exact = await db.getFirstAsync<{ id:number; username:string }>('SELECT id, username FROM accounts WHERE username = ?', [c.username]);
+
+      const exact = await db.getFirstAsync<{ id:number; username:string }>(
+        'SELECT id, username FROM accounts WHERE username = ?',
+        [c.username]
+      );
       if (exact) continue;
+
       let row: {id:number; username:string}|null = null;
+
+      // Source URL is useful as an identity key, but only when it uniquely identifies one account.
       if (c.source_url?.trim()) {
-        row = await db.getFirstAsync<{id:number;username:string}>(
-          'SELECT id, username FROM accounts WHERE lower(trim(source_url)) = lower(trim(?)) LIMIT 1',
+        const sourceMatches = await db.getAllAsync<{id:number;username:string}>(
+          'SELECT id, username FROM accounts WHERE lower(trim(source_url)) = lower(trim(?))',
           [c.source_url.trim()]
         );
+        if (sourceMatches.length === 1) row = sourceMatches[0];
       }
+
+      // Image URL can identify a renamed account only when it is unique in the database.
       if (!row && c.profile_image_url?.trim()) {
         const imageMatches = await db.getAllAsync<{id:number;username:string}>(
-          'SELECT id, username FROM accounts WHERE lower(trim(profile_image_url)) = lower(trim(?)) OR lower(trim(image_url)) = lower(trim(?))',
+          'SELECT DISTINCT id, username FROM accounts WHERE lower(trim(profile_image_url)) = lower(trim(?)) OR lower(trim(image_url)) = lower(trim(?))',
           [c.profile_image_url.trim(), c.profile_image_url.trim()]
         );
         if (imageMatches.length === 1) row = imageMatches[0];
       }
+
+      // Finally use model identity, requiring uniqueness to avoid accidental merges.
       if (!row && c.model_name?.trim()) {
         const candidatesByName = c.letter?.trim()
           ? await db.getAllAsync<{id:number;username:string}>(
@@ -62,6 +75,7 @@ export function getIdsByUsernames(usernames: string[]): Promise<number[]> { retu
             );
         if (candidatesByName.length === 1) row = candidatesByName[0];
       }
+
       if (row && row.username !== c.username && !seenAccounts.has(row.id)) {
         matches.push({account_id:row.id,old_username:row.username,new_username:c.username});
         seenAccounts.add(row.id);
