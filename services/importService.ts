@@ -7,9 +7,9 @@ function socialUsername(r:ParsedRow, platform:'instagram'|'x'|'tiktok'){
 const direct=platform==='instagram'?first(r,['Instagram Username','instagram_username','instagramUsername','Instagram','Username','username','handle','user']):platform==='x'?first(r,['X Username','Twitter Username','x_username','xUsername','twitter_username','twitterUsername']):first(r,['TikTok Username','TikTok Handle','tiktok_username','tiktokUsername','tiktok_handle']);
 const link=platform==='instagram'?first(r,['Instagram Link','Instagram URL','instagram_url','instagramUrl','externalUrl','Profile URL','url','link']):platform==='x'?first(r,['X Link','X URL','Twitter Link','Twitter URL','x_url','xUrl','twitter_url','twitterUrl']):first(r,['TikTok Link','TikTok URL','tiktok_url','tiktokUrl']);
 const s=direct||link||'';
-const normalized=platform==='instagram'?normalizeUsername(s):platform==='x'?(s.match(/(?:https?:\/\/)?(?:www\.)?(?:x\.com|twitter\.com)\/([^/?#&\s]+)/i)?.[1]||s.replace(/^@+/,'').trim().toLowerCase()):(s.match(/(?:https?:\/\/)?(?:www\.)?tiktok\.com\/@?([^/?#&\s]+)/i)?.[1]||s.replace(/^@+/,'').trim().toLowerCase());
+const normalized=platform==='instagram'?normalizeUsername(s):platform==='x'?(s.match(/(?:https?:\/\/)?(?:www\.)?(?:x\.com|twitter\.com)\/([^/?#&\s]+)/i)?.[1]||s.replace(/^@+/,'').trim().toLowerCase()):(s.match(/(?:https?:\/\/)?(?:www\.)?tiktok\.com\/(?:@|%40)?([^/?#&\s]+)/i)?.[1]||s.replace(/^@+/,'').trim().toLowerCase());
 let u=normalized;
-if(!direct&&link&&!((platform==='instagram'&&/instagram\.com\//i.test(link))||(platform==='x'&&/(?:x\.com|twitter\.com)\//i.test(link))||(platform==='tiktok'&&/tiktok\.com\/@?/i.test(link))))u='';
+if(!direct&&link&&!((platform==='instagram'&&/instagram\.com\//i.test(link))||(platform==='x'&&/(?:x\.com|twitter\.com)\//i.test(link))||(platform==='tiktok'&&/tiktok\.com\/(?:@|%40)/i.test(link))))u='';
 if(u&&!/^[a-z0-9._]{1,30}$/.test(u))return null;
 if(u.startsWith('.')||u.endsWith('.')||u.includes('..'))return null;
 const bad=platform==='instagram'?new Set(['explore','accounts','reels','reel','p','stories','direct','tv']):platform==='x'?new Set(['home','explore','search','i','intent','share']):new Set(['explore','foryou','following','login','signup']);
