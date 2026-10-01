@@ -212,20 +212,25 @@ export default function QueueScreen() {
   };
 
   const handleOpen = async () => {
-    if (!account) return;
-    if (!account.username?.trim()) {
-  Alert.alert(
-    'Username unavailable',
-    'This account does not have a username to open.'
-  );
-  return;
-}
-
-const outcome = await openProfile(account.username, {
+    if (!account?.username?.trim()) {
+      Alert.alert('Instagram unavailable', 'IG username not available');
+      return;
+    }
+    const outcome = await openProfile(account.username, {
       preferApp: settings.preferInstagramApp,
       browserFallback: settings.browserFallback,
     });
     if (!outcome.ok) Alert.alert('Could not open Instagram', outcome.message);
+  };
+
+  const handleOpenX = async () => {
+    if (!account?.x_username?.trim()) {
+      Alert.alert('X unavailable', 'X username not available');
+      return;
+    }
+    const { Linking } = await import('react-native');
+    try { await Linking.openURL(account.x_url || `https://x.com/${encodeURIComponent(account.x_username)}/`); }
+    catch { Alert.alert('Could not open X', 'The X profile could not be opened.'); }
   };
 
   const refreshIdentity = useCallback(async (force = false) => {
@@ -324,7 +329,7 @@ const outcome = await openProfile(account.username, {
           <Text style={[styles.displayName, { color: colors.text }]} accessibilityRole='header' numberOfLines={2}>
             {account.display_name || account.full_name || 'Instagram account'}
           </Text>
-          <Text style={[styles.username, { color: colors.textSecondary }]} selectable>@{account.username}</Text>
+          <Text style={[styles.username, { color: colors.textSecondary }]} selectable>{account.username ? `IG: @${account.username}` : 'IG username not available'}</Text><Text style={[styles.username, { color: colors.textSecondary }]} selectable>{account.x_username ? `X: @${account.x_username}` : 'X username not available'}</Text>
           <View style={[styles.badge, { borderColor: statusColor }]} accessible accessibilityLabel={`Current status ${STATUS_LABELS[account.status]}`}>
             <Text style={[styles.badgeText, { color: statusColor }]}>{STATUS_SYMBOLS[account.status]} {STATUS_LABELS[account.status].toUpperCase()}</Text>
           </View>
@@ -344,7 +349,7 @@ const outcome = await openProfile(account.username, {
           </Pressable>
         ) : null}
 
-        <Pressable onPress={handleOpen} accessibilityRole='button' accessibilityLabel={`Open ${account.username} on Instagram`} style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}>
+        <Pressable onPress={handleOpen} accessibilityRole='button' accessibilityLabel='Open Instagram profile' style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}><Text style={styles.primaryText}>Open Instagram</Text></Pressable><Pressable onPress={handleOpenX} accessibilityRole='button' accessibilityLabel='Open X profile' style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}><Text style={styles.primaryText}>Open X</Text></Pressable>{false&&<Pressable>
           <Text style={styles.primaryText}>Open Instagram</Text>
         </Pressable>
 
