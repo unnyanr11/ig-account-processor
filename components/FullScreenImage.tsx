@@ -12,12 +12,27 @@ export default function FullScreenImage({uri,size,textColor,label='Profile pictu
    if(!accountId)return;
    try{
      const rows=await accountRepository.getImageRecords(accountId);
-     const all=Array.from(new Set(rows.flatMap(r=>[r.local_path,r.remote_url].filter((v):v is string=>!!v))));
-     if(uri&&!all.includes(uri))all.unshift(uri);
-     if(all.length)setImages(all);
+     const byRemote=new Map<string,string>();
+     const standalone=new Set<string>();
+     for(const row of rows){
+       const remote=row.remote_url?.trim()||'';
+       const local=row.local_path?.trim()||'';
+       if(remote){
+         const key=remote.toLowerCase();
+         const existing=byRemote.get(key);
+         if(!existing || (!existing.startsWith('file:') && local)) byRemote.set(key,local||remote);
+       } else if(local) standalone.add(local);
+     }
+     const all=[...byRemote.values(),...standalone];
+     const unique=Array.from(new Set(all));
+     if(uri){
+       const uriKey=uri.trim().toLowerCase();
+       if(!unique.some(x=>x.trim().toLowerCase()===uriKey)) unique.unshift(uri);
+     }
+     setImages(unique);setIndex(0);
    }catch{if(uri)setImages([uri]);}
  },[accountId,uri]);
- useEffect(()=>{if(uri&&!images.includes(uri))setImages(v=>[uri,...v]);},[uri]);
+ useEffect(()=>{setImages(uri?[uri]:[]);setIndex(0);setZoomed(false);},[accountId,uri]);
  if(!uri)return null;
  return <>
   <Pressable onPress={(event)=>{event.stopPropagation();void open();}} accessibilityRole='imagebutton' accessibilityLabel={'View '+label+' full screen'}>
