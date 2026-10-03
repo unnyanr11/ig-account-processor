@@ -8,7 +8,7 @@ import type { List } from '../../types/list';
 import { toUserMessage } from '../../services/errors';
 import { openProfile } from '../../services/instagram';
 import { fetchProfileMetadata } from '../../services/profileImage';
-import { downloadImage, saveImageToDeviceStorage } from '../../services/imageDownloadService';
+import { downloadImage, saveAllImagesToDeviceStorage } from '../../services/imageDownloadService';
 import { statusLabel } from '../../utils/format';
 import { formatDateHuman, formatDateTimeHuman } from '../../utils/normalization';
 import { useSettings } from '../../utils/useSettings';
@@ -124,10 +124,9 @@ export default function AccountDetailsScreen() {
 
   const saveToDevice = () => run(async () => {
     if (!account) return;
-    const remote = account.image_url ?? account.profile_image_url ?? null;
-    const uri = await saveImageToDeviceStorage(account.id, remote, account.profile_image_uri ?? account.local_image_path ?? null);
-    if (!uri) throw new Error('The image was not saved. Choose a storage folder and try again.');
-  }, 'Image saved to your Download folder');
+    const result = await saveAllImagesToDeviceStorage(account.id, account.model_name ?? account.display_name ?? account.full_name);
+    if (!result.saved) throw new Error('No images were saved. Choose a storage folder and try again.');
+  }, 'All available images saved in the model folder');
 
   const openSource = async () => { if (!account?.source_url) { Alert.alert('Source unavailable','No source link is available.'); return; } try { await Linking.openURL(account.source_url); } catch { Alert.alert('Could not open source','The source link could not be opened.'); } };
 
@@ -202,7 +201,7 @@ const outcome = await openProfile(account.username, {
 
       <View style={styles.headerBlock}>
         {(account.profile_image_uri || account.local_image_path || account.image_url || account.profile_image_url) ? (
-          <FullScreenImage uri={account.profile_image_uri || account.local_image_path || account.image_url || account.profile_image_url} size={120} textColor={colors.text} />
+          <FullScreenImage accountId={account.id} uri={account.profile_image_uri || account.local_image_path || account.image_url || account.profile_image_url} size={120} textColor={colors.text} />
         ) : (
           <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
             <Text style={[styles.avatarPlaceholderText, { color: colors.textMuted }]}>{(account.username?.[0] || '?').toUpperCase()}</Text>
@@ -223,7 +222,7 @@ const outcome = await openProfile(account.username, {
 
       {(account.profile_image_url || account.image_url) ? <Pressable onPress={() => void downloadLocal()} disabled={busy} accessibilityRole='button' style={[styles.secondary, { backgroundColor: colors.surfaceAlt, opacity: busy ? 0.6 : 1 }]}><Text style={[styles.secondaryText, { color: colors.text }]}>Download Image</Text></Pressable> : null}
 
-      {(account.profile_image_uri || account.local_image_path || account.profile_image_url || account.image_url) ? <Pressable onPress={() => void saveToDevice()} disabled={busy} accessibilityRole='button' style={[styles.secondary, { backgroundColor: colors.surfaceAlt, opacity: busy ? 0.6 : 1 }]}><Text style={[styles.secondaryText, { color: colors.text }]}>Download Image to Device</Text></Pressable> : null}
+      {(account.profile_image_uri || account.local_image_path || account.profile_image_url || account.image_url) ? <Pressable onPress={() => void saveToDevice()} disabled={busy} accessibilityRole='button' style={[styles.secondary, { backgroundColor: colors.surfaceAlt, opacity: busy ? 0.6 : 1 }]}><Text style={[styles.secondaryText, { color: colors.text }]}>Download All Images</Text></Pressable> : null}
 
       <Pressable onPress={openInstagram} accessibilityRole='button' accessibilityLabel='Open Instagram profile' style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}><Text style={styles.primaryText}>Open Instagram</Text></Pressable><Pressable onPress={openX} accessibilityRole='button' accessibilityLabel='Open X profile' style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}><Text style={styles.primaryText}>Open X</Text></Pressable><Pressable onPress={openTikTok} accessibilityRole='button' accessibilityLabel='Open TikTok profile' style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}><Text style={styles.primaryText}>Open TikTok</Text></Pressable>
 
