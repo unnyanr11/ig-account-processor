@@ -29,7 +29,7 @@ function FileSwitcher({importId,listId,colors,router}:{importId?:number;listId?:
    <View style={styles.modalBackdrop}><View style={[styles.fileModal,{backgroundColor:colors.surface,borderColor:colors.border}]}>
     <Text style={[styles.modalTitle,{color:colors.text}]}>Select file</Text>
     <Pressable onPress={()=>{setOpen(false);router.replace({pathname:'/queue',params:listId?{listId:String(listId)}:{}});}} style={[styles.fileOption,{borderColor:colors.border}]}><Text style={{color:colors.text,fontWeight:'700'}}>All imported files</Text></Pressable>
-    <FlatList data={batches} keyExtractor={x=>String(x.id)} style={{maxHeight:360}} renderItem={({item})=><Pressable onPress={()=>{setOpen(false);router.replace({pathname:'/queue',params:{importId:String(item.id),...(listId?{listId:String(listId)}:{})}});}} style={[styles.fileOption,{borderColor:colors.border}]}><Text style={{color:colors.text,fontWeight:'700'}} numberOfLines={2}>{item.file_name}</Text><Text style={{color:colors.textMuted,fontSize:12}}>{item.total_records.toLocaleString()} records • {new Date(item.created_at).toLocaleString()}</Text></Pressable>}/>
+    <FlatList data={listId?batches.filter(x=>x.list_id===listId):batches} keyExtractor={x=>String(x.id)} style={{maxHeight:360}} renderItem={({item})=><Pressable onPress={()=>{setOpen(false);router.replace({pathname:'/queue',params:{importId:String(item.id),...(listId?{listId:String(listId)}:{})}});}} style={[styles.fileOption,{borderColor:colors.border}]}><Text style={{color:colors.text,fontWeight:'700'}} numberOfLines={2}>{item.file_name}</Text><Text style={{color:colors.textMuted,fontSize:12}}>{item.total_records.toLocaleString()} records • {new Date(item.created_at).toLocaleString()}</Text></Pressable>}/>
     <Pressable onPress={()=>setOpen(false)} style={[styles.cancelButton,{backgroundColor:colors.surfaceAlt}]}><Text style={{color:colors.text,fontWeight:'700'}}>Cancel</Text></Pressable>
    </View></View>
   </Modal></>;
@@ -151,9 +151,9 @@ export default function QueueScreen() {
       if (id === null) setPhase('empty');
       else await show(id);
     });
-    // Runs on first load and on retry only; changing the mode must not move the current account.
+    // Reload when the selected list/file changes so the queue never remains on the previous scope.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded, reloadKey, importId]);
+  }, [loaded, reloadKey, importId, listId]);
 
   const goNext = useCallback(async (fromId: number) => {
     setNotice('');
