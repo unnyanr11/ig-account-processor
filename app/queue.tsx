@@ -136,7 +136,7 @@ export default function QueueScreen() {
     });
     // Runs on first load and on retry only; changing the mode must not move the current account.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded, reloadKey]);
+  }, [loaded, reloadKey, importId]);
 
   const goNext = useCallback(async (fromId: number) => {
     setNotice('');
