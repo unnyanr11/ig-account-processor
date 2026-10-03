@@ -40,6 +40,7 @@ export interface StatusCounts { total: number; byStatus: Record<AccountStatus, n
 export type Direction = 'next' | 'prev';
 export interface AccountRepository {
   getById(id:number):Promise<AccountWithList|null>;
+  getImageRecords(id:number):Promise<Array<{id:number;remote_url:string|null;local_path:string|null;download_status:string}>>;
   getPage(f:AccountFilters,l:number,o:number):Promise<AccountWithList[]>;
   count(f:AccountFilters):Promise<number>;
   findExistingUsernames(u:string[]):Promise<Set<string>>;
