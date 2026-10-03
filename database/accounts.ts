@@ -203,6 +203,11 @@ export function insertMany(
           }
 
           if (accountId===null) throw new DatabaseError('Account was saved but could not be reloaded');
+          if (a.list_id !== undefined) {
+            await txn.runAsync('UPDATE accounts SET list_id=?,updated_at=? WHERE id=?',[a.list_id??null,a.updated_at??ts,accountId]);
+            await txn.runAsync('DELETE FROM list_accounts WHERE account_id=?',[accountId]);
+            if (a.list_id !== null) await txn.runAsync('INSERT OR IGNORE INTO list_accounts(list_id,account_id,created_at) VALUES(?,?,?)',[a.list_id,accountId,a.created_at??ts]);
+          }
           if (a.profile_image_urls?.length) {
             for (const imageUrl of Array.from(new Set(a.profile_image_urls)).filter(Boolean)) {
               const existingImage=await txn.getFirstAsync<{id:number}>('SELECT id FROM account_images WHERE account_id=? AND remote_url=? LIMIT 1',[accountId,imageUrl]);
