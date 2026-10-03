@@ -71,7 +71,7 @@ async function ensureSubdirectory(parentUri:string,folderName:string):Promise<st
   catch{
     const entries=await FileSystem.StorageAccessFramework.readDirectoryAsync(parentUri);
     const wanted=folderName.toLowerCase();
-    const found=entries.find(uri=>{const raw=decodeURIComponent(uri.split('/').pop()||'').toLowerCase();return raw===wanted;});
+    const found=entries.find(uri=>{const raw=decodeURIComponent(uri).toLowerCase();return raw.endsWith('/'+wanted)||raw.endsWith(':'+wanted);});
     if(found)return found;
     throw new Error(`Could not create the folder "${folderName}".`);
   }
