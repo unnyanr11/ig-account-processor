@@ -24,6 +24,8 @@ function buildWhere(filters: AccountFilters): { where: string; params: Param[] }
   return { where: clauses.length ? `WHERE ${clauses.join(' AND ')}` : '', params };
 }
 
+export function getImageRecords(id:number){return withDb('Failed to load account images',db=>db.getAllAsync<{id:number;remote_url:string|null;local_path:string|null;download_status:string}>('SELECT id,remote_url,local_path,download_status FROM account_images WHERE account_id=? AND (local_path IS NOT NULL OR remote_url IS NOT NULL) ORDER BY id ASC',[id]));}
+
 export function getById(id: number): Promise<AccountWithList | null> { return withDb('Failed to load account', async (db) => (await db.getFirstAsync<AccountWithList>(`${SELECT_WITH_LIST} WHERE a.id = ?`, [id])) ?? null); }
 export function getPage(filters: AccountFilters, limit: number, offset: number): Promise<AccountWithList[]> { return withDb('Failed to load accounts', async (db) => { const { where, params } = buildWhere(filters); return db.getAllAsync<AccountWithList>(`${SELECT_WITH_LIST} ${where} ORDER BY a.id ASC LIMIT ? OFFSET ?`, [...params, limit, offset]); }); }
 export function count(filters: AccountFilters): Promise<number> { return withDb('Failed to count accounts', async (db) => { const { where, params } = buildWhere(filters); const row = await db.getFirstAsync<{ n: number }>(`SELECT COUNT(*) AS n FROM accounts a ${where}`, params); return row?.n ?? 0; }); }
@@ -201,6 +203,16 @@ export function insertMany(
           }
 
           if (accountId===null) throw new DatabaseError('Account was saved but could not be reloaded');
+          if (a.profile_image_urls?.length) {
+            for (const imageUrl of Array.from(new Set(a.profile_image_urls)).filter(Boolean)) {
+              const existingImage=await txn.getFirstAsync<{id:number}>('SELECT id FROM account_images WHERE account_id=? AND remote_url=? LIMIT 1',[accountId,imageUrl]);
+              if(existingImage) {
+                await txn.runAsync('UPDATE account_images SET image_type=COALESCE(image_type,?),updated_at=? WHERE id=?',['profile',a.updated_at??ts,existingImage.id]);
+              } else {
+                await txn.runAsync('INSERT INTO account_images(account_id,remote_url,local_path,is_primary,image_type,download_status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)',[accountId,imageUrl,null,accountId===accountId&&imageUrl===a.profile_image_urls[0]?1:0,'profile','NOT_DOWNLOADED',a.created_at??ts,a.updated_at??ts]);
+              }
+            }
+          }
           if (a.username) saved.set(a.username,accountId);
           if (a.identity_key) saved.set(a.identity_key,accountId);
           if (importId) {
