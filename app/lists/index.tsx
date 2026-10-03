@@ -36,8 +36,9 @@ export default function ListsScreen() {
   const createList = async (name: string) => {
     setCreating(false);
     try {
-      await listRepository.create(name);
+      const id = await listRepository.create(name);
       await load();
+      router.push({ pathname: '/import', params: { listId: String(id) } });
     } catch (e) {
       Alert.alert('Could not create list', toUserMessage(e));
     }
@@ -63,7 +64,7 @@ export default function ListsScreen() {
               </Pressable>
             </View>
           }
-          ListEmptyComponent={<EmptyState colors={colors} title='No lists yet' message='Create a list to group accounts, for example by city or project.' />}
+          ListEmptyComponent={<EmptyState colors={colors} title='No lists yet' message='Create a list and you will be asked to import the file that belongs to it.' />}
           renderItem={({ item }) => (
             <Pressable
               onPress={() => router.push({ pathname: '/lists/[id]', params: { id: String(item.id) } })}
