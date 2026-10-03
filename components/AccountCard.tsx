@@ -25,7 +25,7 @@ function AccountCard({ account, colors, onPress }: Props) {
     >
       <View style={styles.top}>
         {(account.profile_image_uri || account.local_image_path || account.image_url || account.profile_image_url) ? (
-          <FullScreenImage uri={account.profile_image_uri || account.local_image_path || account.image_url || account.profile_image_url} size={50} textColor={colors.text} />
+          <FullScreenImage accountId={account.id} uri={account.profile_image_uri || account.local_image_path || account.image_url || account.profile_image_url} size={50} textColor={colors.text} />
         ) : (
           <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
             <Text style={[styles.avatarPlaceholderText, { color: colors.textMuted }]}>{(account.username?.[0] || account.model_name?.[0] || '?').toUpperCase()}</Text>
