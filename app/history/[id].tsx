@@ -47,7 +47,8 @@ export default function ImportDetailScreen() {
       <Text style={[styles.note, { color: colors.textMuted }]}>
         Undo restores affected existing accounts to their pre-import state and removes accounts created by this import. Later changes to affected accounts may be reverted.
       </Text>
-      <Pressable onPress={()=>router.push({pathname:'/queue',params:{importId:String(batchId)}})} style={[styles.process,{backgroundColor:colors.primary}]} accessibilityRole='button'><Text style={styles.processText}>Process This File</Text></Pressable>\n      <Pressable disabled={undoing} onPress={()=>{
+      <Pressable onPress={()=>router.push({pathname:'/queue',params:{importId:String(batchId)}})} style={[styles.process,{backgroundColor:colors.primary}]} accessibilityRole='button'><Text style={styles.processText}>Process This File</Text></Pressable>
+      <Pressable disabled={undoing} onPress={()=>{
         Alert.alert('Undo entire import?','This restores affected existing accounts and removes accounts created by this import.',[
           {text:'Cancel',style:'cancel'},
           {text:'Undo Import',style:'destructive',onPress:async()=>{
