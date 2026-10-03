@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { accountRepository, type AccountFilters } from '../database';
+import { accountRepository, historyRepository, type AccountFilters } from '../database';
 import { AccountStatus, AccountWithList, ACCOUNT_STATUSES, STATUS_COLORS, STATUS_LABELS, STATUS_SYMBOLS } from '../types/account';
 import { toUserMessage } from '../services/errors';
 import { openProfile } from '../services/instagram';
 import { fetchProfileMetadata } from '../services/profileImage';
-import { downloadImage, saveImageToDeviceStorage } from '../services/imageDownloadService';
+import { downloadImage, saveAllImagesToDeviceStorage } from '../services/imageDownloadService';
 import type { QueueMode } from '../services/settingsService';
 import { ThemeColors } from '../utils/theme';
 import { useSettings } from '../utils/useSettings';
@@ -18,6 +18,23 @@ import FullScreenImage from '../components/FullScreenImage';
 import UndoBar from '../components/UndoBar';
 
 const UNDO_MS = 6000;
+function FileSwitcher({importId,listId,colors,router}:{importId?:number;listId?:number;colors:ThemeColors;router:any}){
+ const [open,setOpen]=useState(false),[batches,setBatches]=useState<any[]>([]);
+ useEffect(()=>{historyRepository.getImportBatches().then(setBatches).catch(()=>{});},[]);
+ const current=batches.find(x=>x.id===importId);
+ return <><Pressable onPress={()=>setOpen(true)} accessibilityRole='button' style={[styles.fileSwitcher,{backgroundColor:colors.surfaceAlt,borderColor:colors.border}]}>
+   <Text style={[styles.fileSwitcherLabel,{color:colors.textMuted}]}>Working file</Text><Text style={[styles.fileSwitcherName,{color:colors.text}]} numberOfLines={1}>{current?.file_name??'All imported files'}</Text><Text style={[styles.fileSwitcherAction,{color:colors.primary}]}>Switch</Text>
+  </Pressable>
+  <Modal visible={open} transparent animationType='fade' onRequestClose={()=>setOpen(false)}>
+   <View style={styles.modalBackdrop}><View style={[styles.fileModal,{backgroundColor:colors.surface,borderColor:colors.border}]}>
+    <Text style={[styles.modalTitle,{color:colors.text}]}>Select file</Text>
+    <Pressable onPress={()=>{setOpen(false);router.replace({pathname:'/queue',params:listId?{listId:String(listId)}:{}});}} style={[styles.fileOption,{borderColor:colors.border}]}><Text style={{color:colors.text,fontWeight:'700'}}>All imported files</Text></Pressable>
+    <FlatList data={batches} keyExtractor={x=>String(x.id)} style={{maxHeight:360}} renderItem={({item})=><Pressable onPress={()=>{setOpen(false);router.replace({pathname:'/queue',params:{importId:String(item.id),...(listId?{listId:String(listId)}:{})}});}} style={[styles.fileOption,{borderColor:colors.border}]}><Text style={{color:colors.text,fontWeight:'700'}} numberOfLines={2}>{item.file_name}</Text><Text style={{color:colors.textMuted,fontSize:12}}>{item.total_records.toLocaleString()} records • {new Date(item.created_at).toLocaleString()}</Text></Pressable>}/>
+    <Pressable onPress={()=>setOpen(false)} style={[styles.cancelButton,{backgroundColor:colors.surfaceAlt}]}><Text style={{color:colors.text,fontWeight:'700'}}>Cancel</Text></Pressable>
+   </View></View>
+  </Modal></>;
+}
+
 const MODES: { key: QueueMode; label: string }[] = [
   { key: 'UNPROCESSED', label: 'Unprocessed only' },
   { key: 'ALL', label: 'All accounts' },
@@ -45,18 +62,19 @@ function Chip({ label, selected, onPress, colors }: { label: string; selected: b
 }
 
 export default function QueueScreen() {
-  const params = useLocalSearchParams<{ startId?: string; listId?: string }>();
+  const params = useLocalSearchParams<{ startId?: string; listId?: string; importId?: string }>();
   const router = useRouter();
   const { colors } = useTheme();
   const { settings, loaded, update } = useSettings();
 
   const listId = params.listId ? Number(params.listId) : undefined;
-  const scope = useMemo<AccountFilters>(() => ({ listId }), [listId]);
+  const importId = params.importId ? Number(params.importId) : undefined;
+  const scope = useMemo<AccountFilters>(() => ({ listId, importId }), [listId, importId]);
   // Next follows the processing mode; Previous always walks every account so mistakes can be reviewed.
   const modeFilter = useMemo<AccountFilters>(() => {
-    if (settings.queueMode === 'UNPROCESSED') return { listId, status: AccountStatus.NEW };
-    if (settings.queueMode === 'STATUS') return { listId, status: settings.queueStatus };
-    return { listId };
+    if (settings.queueMode === 'UNPROCESSED') return { listId, importId, status: AccountStatus.NEW };
+    if (settings.queueMode === 'STATUS') return { listId, importId, status: settings.queueStatus };
+    return { listId, importId };
   }, [listId, settings.queueMode, settings.queueStatus]);
 
   const [phase, setPhase] = useState<Phase>('loading');
@@ -202,14 +220,11 @@ export default function QueueScreen() {
     if (!account) return;
     setBusy(true);
     try {
-      const remote = account.image_url ?? account.profile_image_url ?? null;
-      const uri = await saveImageToDeviceStorage(account.id, remote, account.profile_image_uri ?? account.local_image_path ?? null);
-      setNotice(uri ? 'Image saved to your Download folder.' : 'Image was not saved.');
+      const result = await saveAllImagesToDeviceStorage(account.id, account.model_name ?? account.display_name ?? account.full_name, (done,total) => setNotice(`Downloading images ${done}/${total}…`));
+      setNotice(result.saved ? `${result.saved} image${result.saved===1?'':'s'} saved in the model folder.${result.failed ? ` ${result.failed} failed.` : ''}` : 'No images were saved. Choose a storage folder and try again.');
     } catch {
-      setNotice('Could not save the image to device storage.');
-    } finally {
-      setBusy(false);
-    }
+      setNotice('Could not save the images to device storage.');
+    } finally { setBusy(false); }
   };
 
   const handleOpen = async () => {
@@ -313,6 +328,7 @@ export default function QueueScreen() {
     body = (
       <>
         <ProgressBar current={position} total={total} colors={colors} label={`${remaining.toLocaleString()} unprocessed left`} />
+        <FileSwitcher importId={importId} listId={listId} colors={colors} router={router} />
 
         <View style={styles.modeRow}>
           {MODES.map((mode) => (
@@ -329,7 +345,7 @@ export default function QueueScreen() {
 
         <View style={styles.accountBlock}>
           {(account.profile_image_uri || account.local_image_path || account.image_url || account.profile_image_url) ? (
-            <FullScreenImage uri={account.profile_image_uri || account.local_image_path || account.image_url || account.profile_image_url} size={92} textColor={colors.text} />
+            <FullScreenImage accountId={account.id} uri={account.profile_image_uri || account.local_image_path || account.image_url || account.profile_image_url} size={92} textColor={colors.text} />
           ) : (
             <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
               <Text style={[styles.avatarPlaceholderText, { color: colors.textMuted }]}>{(account.username?.[0] || account.model_name?.[0] || '?').toUpperCase()}</Text>
@@ -354,7 +370,7 @@ export default function QueueScreen() {
 
         {(account.profile_image_uri || account.local_image_path || account.image_url || account.profile_image_url) ? (
           <Pressable onPress={() => void saveToDevice()} disabled={busy} accessibilityRole='button' style={[styles.secondaryAction, { backgroundColor: colors.surfaceAlt, opacity: busy ? 0.6 : 1 }]}>
-            <Text style={[styles.secondaryActionText, { color: colors.text }]}>Download Image to Device</Text>
+            <Text style={[styles.secondaryActionText, { color: colors.text }]}>Download All Images</Text>
           </Pressable>
         ) : null}
 
@@ -442,6 +458,6 @@ const styles = StyleSheet.create({
   navRow: { flexDirection: 'row', gap: 12 },
   navButton: { flex: 1, minHeight: 56, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   navText: { fontSize: 16, fontWeight: '700' },
-  switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 48 },
+  fileSwitcher:{borderWidth:1,borderRadius:12,padding:12,gap:3},fileSwitcherLabel:{fontSize:11,fontWeight:'700',textTransform:'uppercase'},fileSwitcherName:{fontSize:15,fontWeight:'800',paddingRight:52},fileSwitcherAction:{position:'absolute',right:12,top:18,fontWeight:'800'},modalBackdrop:{flex:1,backgroundColor:'rgba(0,0,0,0.65)',justifyContent:'center',padding:18},fileModal:{borderWidth:1,borderRadius:18,padding:16,gap:10,maxHeight:'80%'},modalTitle:{fontSize:20,fontWeight:'800',marginBottom:4},fileOption:{borderWidth:1,borderRadius:12,padding:12,gap:4},cancelButton:{minHeight:48,borderRadius:12,alignItems:'center',justifyContent:'center',marginTop:2},switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 48 },
   switchLabel: { fontSize: 15, fontWeight: '600' },
 });
