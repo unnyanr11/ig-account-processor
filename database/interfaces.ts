@@ -18,6 +18,7 @@ export interface NewAccountInput {
   display_name?: string | null;
   full_name?: string | null;
   profile_image_url?: string | null;
+  profile_image_urls?: string[];
   image_url?: string | null;
   profile_image_uri?: string | null;
   local_image_path?: string | null;
