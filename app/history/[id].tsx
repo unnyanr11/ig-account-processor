@@ -47,7 +47,7 @@ export default function ImportDetailScreen() {
       <Text style={[styles.note, { color: colors.textMuted }]}>
         Undo restores affected existing accounts to their pre-import state and removes accounts created by this import. Later changes to affected accounts may be reverted.
       </Text>
-      <Pressable disabled={undoing} onPress={()=>{
+      <Pressable onPress={()=>router.push({pathname:'/queue',params:{importId:String(batchId)}})} style={[styles.process,{backgroundColor:colors.primary}]} accessibilityRole='button'><Text style={styles.processText}>Process This File</Text></Pressable>\n      <Pressable disabled={undoing} onPress={()=>{
         Alert.alert('Undo entire import?','This restores affected existing accounts and removes accounts created by this import.',[
           {text:'Cancel',style:'cancel'},
           {text:'Undo Import',style:'destructive',onPress:async()=>{
@@ -78,6 +78,8 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28 },
   body: { fontSize: 16, textAlign: 'center' },
   header: { gap: 6 },
+  process: { minHeight: 52, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 6 },
+  processText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
   name: { fontSize: 20, fontWeight: '800' },
   meta: { fontSize: 14 },
   note: { fontSize: 13, lineHeight: 19, marginTop: 4 },
