@@ -33,6 +33,10 @@ export const POST_MIGRATIONS:{version:number;sql:string[]}[]=[
 `ALTER TABLE app_import_accounts ADD COLUMN previous_account_json TEXT`,
 `ALTER TABLE app_import_accounts ADD COLUMN created_by_import INTEGER NOT NULL DEFAULT 0`,
 `CREATE INDEX IF NOT EXISTS idx_import_accounts_import ON app_import_accounts(import_id)`
+]},
+{version:13,sql:[
+`ALTER TABLE app_imports ADD COLUMN list_id INTEGER`,
+`CREATE INDEX IF NOT EXISTS idx_app_imports_list ON app_imports(list_id)`
 ]}
 ];
 export const REQUIRED_ACCOUNT_COLUMNS = [
