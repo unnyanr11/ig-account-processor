@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { accountRepository, historyRepository, type AccountFilters } from '../database';
+import { accountRepository, historyRepository, listRepository, type AccountFilters } from '../database';
 import { AccountStatus, AccountWithList, ACCOUNT_STATUSES, STATUS_COLORS, STATUS_LABELS, STATUS_SYMBOLS } from '../types/account';
 import { toUserMessage } from '../services/errors';
 import { openProfile } from '../services/instagram';
@@ -30,6 +30,23 @@ function FileSwitcher({importId,listId,colors,router}:{importId?:number;listId?:
     <Text style={[styles.modalTitle,{color:colors.text}]}>Select file</Text>
     <Pressable onPress={()=>{setOpen(false);router.replace({pathname:'/queue',params:listId?{listId:String(listId)}:{}});}} style={[styles.fileOption,{borderColor:colors.border}]}><Text style={{color:colors.text,fontWeight:'700'}}>All imported files</Text></Pressable>
     <FlatList data={batches} keyExtractor={x=>String(x.id)} style={{maxHeight:360}} renderItem={({item})=><Pressable onPress={()=>{setOpen(false);router.replace({pathname:'/queue',params:{importId:String(item.id),...(listId?{listId:String(listId)}:{})}});}} style={[styles.fileOption,{borderColor:colors.border}]}><Text style={{color:colors.text,fontWeight:'700'}} numberOfLines={2}>{item.file_name}</Text><Text style={{color:colors.textMuted,fontSize:12}}>{item.total_records.toLocaleString()} records • {new Date(item.created_at).toLocaleString()}</Text></Pressable>}/>
+    <Pressable onPress={()=>setOpen(false)} style={[styles.cancelButton,{backgroundColor:colors.surfaceAlt}]}><Text style={{color:colors.text,fontWeight:'700'}}>Cancel</Text></Pressable>
+   </View></View>
+  </Modal></>;
+}
+
+function ListSwitcher({listId,colors,router}:{listId?:number;colors:ThemeColors;router:any}){
+ const [open,setOpen]=useState(false),[lists,setLists]=useState<any[]>([]);
+ useEffect(()=>{listRepository.getAllWithStats().then(setLists).catch(()=>{});},[]);
+ const current=lists.find(x=>x.id===listId);
+ return <><Pressable onPress={()=>setOpen(true)} accessibilityRole='button' style={[styles.fileSwitcher,{backgroundColor:colors.surfaceAlt,borderColor:colors.border}]}>
+   <Text style={[styles.fileSwitcherLabel,{color:colors.textMuted}]}>Working list</Text><Text style={[styles.fileSwitcherName,{color:colors.text}]} numberOfLines={1}>{current?.name??'All lists'}</Text><Text style={[styles.fileSwitcherAction,{color:colors.primary}]}>Switch</Text>
+  </Pressable>
+  <Modal visible={open} transparent animationType='fade' onRequestClose={()=>setOpen(false)}>
+   <View style={styles.modalBackdrop}><View style={[styles.fileModal,{backgroundColor:colors.surface,borderColor:colors.border}]}>
+    <Text style={[styles.modalTitle,{color:colors.text}]}>Select list</Text>
+    <Pressable onPress={()=>{setOpen(false);router.replace({pathname:'/queue'});}} style={[styles.fileOption,{borderColor:colors.border}]}><Text style={{color:colors.text,fontWeight:'700'}}>All lists</Text></Pressable>
+    <FlatList data={lists} keyExtractor={x=>String(x.id)} style={{maxHeight:360}} renderItem={({item})=><Pressable onPress={()=>{setOpen(false);router.replace({pathname:'/queue',params:{listId:String(item.id)}});}} style={[styles.fileOption,{borderColor:colors.border}]}><Text style={{color:colors.text,fontWeight:'700'}} numberOfLines={2}>{item.name}</Text><Text style={{color:colors.textMuted,fontSize:12}}>{item.total.toLocaleString()} accounts • {item.new_count.toLocaleString()} new</Text></Pressable>}/>
     <Pressable onPress={()=>setOpen(false)} style={[styles.cancelButton,{backgroundColor:colors.surfaceAlt}]}><Text style={{color:colors.text,fontWeight:'700'}}>Cancel</Text></Pressable>
    </View></View>
   </Modal></>;
@@ -328,6 +345,7 @@ export default function QueueScreen() {
     body = (
       <>
         <ProgressBar current={position} total={total} colors={colors} label={`${remaining.toLocaleString()} unprocessed left`} />
+        <ListSwitcher listId={listId} colors={colors} router={router} />
         <FileSwitcher importId={importId} listId={listId} colors={colors} router={router} />
 
         <View style={styles.modeRow}>
